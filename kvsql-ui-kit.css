@@ -1,0 +1,416 @@
+/* ============================================================================
+   KVSQL UI KIT — dark "ledger" interface system
+   Extracted from https://github.com/asrbmy/kvsql
+
+   Drop this file into any project:
+     <link rel="stylesheet" href="kvsql-ui-kit.css">
+
+   Everything here is plain CSS — no build step, no framework required.
+   Sections are independent: delete whatever component you don't need.
+   Section 12 (CodeMirror theme) is optional — only keep it if your other
+   project also uses the CodeMirror editor library.
+   ============================================================================ */
+
+
+/* ---------------------------------------------------------------------------
+   1. DESIGN TOKENS
+   Change these six colors and two fonts to re-skin every component at once.
+--------------------------------------------------------------------------- */
+:root{
+  --bg: #0F1416;              /* page background */
+  --surface: #161D20;         /* panels, headers, sidebars */
+  --surface-2: #1D262A;       /* hover states, input backgrounds */
+  --line-soft: #263237;       /* borders / dividers */
+  --text: #DCE4E6;            /* primary text */
+  --text-dim: #7E9096;        /* secondary text */
+  --text-faint: #4E5D62;      /* tertiary / disabled text */
+  --accent: #D9A441;          /* amber — primary actions, highlights */
+  --accent-soft: rgba(217,164,65,0.12);
+  --teal: #4FA69A;            /* teal — success, links, secondary accent */
+  --teal-soft: rgba(79,166,154,0.12);
+  --error: #C9604C;
+  --error-soft: rgba(201,96,76,0.12);
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+
+/* ---------------------------------------------------------------------------
+   2. BASE / RESET
+--------------------------------------------------------------------------- */
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--sans);
+}
+::-webkit-scrollbar{ width:9px; height:9px; }
+::-webkit-scrollbar-thumb{ background:var(--line-soft); border-radius:5px; }
+::-webkit-scrollbar-track{ background:transparent; }
+
+
+/* ---------------------------------------------------------------------------
+   3. BUTTONS
+   <button>Default</button>
+   <button class="primary">Primary action</button>
+   <button class="ghost">Ghost / low-emphasis</button>
+   <button disabled>Disabled</button>
+--------------------------------------------------------------------------- */
+button{
+  font-family:var(--sans); cursor:pointer; border-radius:4px; border:1px solid var(--line-soft);
+  background:var(--surface-2); color:var(--text); font-size:12.5px; padding:7px 12px;
+  display:flex; align-items:center; gap:6px; font-weight:500; transition:border-color .15s, background .15s;
+}
+button:hover{ border-color:var(--text-faint); }
+button:active{ transform: translateY(1px); }
+button svg{ width:13px; height:13px; flex-shrink:0; }
+button.primary{ background:var(--accent); color:#1B140A; border-color:var(--accent); font-weight:600; }
+button.primary:hover{ background:#e6b559; }
+button.ghost{ background:transparent; }
+button[disabled]{ opacity:0.45; cursor:not-allowed; }
+button[disabled]:hover{ border-color:var(--line-soft); }
+.toolbar-divider{ width:1px; height:18px; background:var(--line-soft); margin:0 2px; flex-shrink:0; }
+
+
+/* ---------------------------------------------------------------------------
+   4. HEADER / BRAND MARK / TOOLBAR
+   <header>
+     <div class="brand"><div class="mark">DB</div><div><h1>Project</h1><div class="sub">tagline</div></div></div>
+     <div class="header-actions"><button class="primary">Run</button></div>
+   </header>
+   <div class="toolbar"><div class="toolbar-scroll"> ...buttons... </div></div>
+--------------------------------------------------------------------------- */
+header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 22px; border-bottom:1px solid var(--line-soft);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 39px, rgba(255,255,255,0.02) 39px 40px),
+    var(--surface);
+  flex-shrink:0;
+}
+.brand{ display:flex; align-items:center; gap:12px; }
+.brand .mark{
+  width:30px; height:30px; border:1.5px solid var(--accent); border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-weight:700; color:var(--accent); font-size:14px;
+  transform: rotate(-2deg);
+}
+.brand h1{ font-size:15px; margin:0; font-weight:600; letter-spacing:0.02em; }
+.brand .sub{ font-family:var(--mono); font-size:10.5px; color:var(--text-faint); letter-spacing:0.06em; text-transform:uppercase; margin-top:1px; }
+.header-actions{ display:flex; gap:8px; align-items:center; }
+
+.toolbar{
+  display:flex; align-items:stretch; gap:8px; padding:10px 16px;
+  border-bottom:1px solid var(--line-soft); background:var(--bg); flex-shrink:0;
+}
+.toolbar-scroll{ display:flex; align-items:center; gap:8px; overflow-x:auto; scrollbar-width:none; }
+.toolbar-scroll::-webkit-scrollbar{ display:none; }
+.toolbar .hint{ margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--text-faint); flex-shrink:0; padding-left:10px; }
+.toolbar .hint kbd{
+  background:var(--surface-2); border:1px solid var(--line-soft); border-radius:3px;
+  padding:1px 5px; font-family:var(--mono); font-size:10.5px; color:var(--text-dim);
+}
+
+
+/* ---------------------------------------------------------------------------
+   5. SIDEBAR / COLLAPSIBLE LIST (generic accordion-style list group)
+   Originally a database schema browser — works for any nested list:
+   file trees, settings groups, nav sections, etc.
+
+   <aside class="sidebar">
+     <div class="sidebar-head">Section</div>
+     <div class="table-list">
+       <details class="table-item" open>
+         <summary><svg class="chevron">...</svg> item_name <span class="n">3</span></summary>
+         <div class="cols">
+           <div class="col-row">
+             <div class="col-left">child_row <span class="badge badge-pk">PK</span></div>
+             <span class="type">detail</span>
+           </div>
+         </div>
+       </details>
+     </div>
+     <div class="sidebar-foot">Footer hint text</div>
+   </aside>
+--------------------------------------------------------------------------- */
+.sidebar{
+  width:230px; flex-shrink:0; background:var(--surface);
+  border-right:1px solid var(--line-soft);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.sidebar-head{
+  padding:12px 14px 8px; font-family:var(--mono); font-size:10.5px;
+  color:var(--text-faint); text-transform:uppercase; letter-spacing:0.08em;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.table-list{ overflow-y:auto; flex:1; padding:0 6px 10px; }
+.table-item{ margin-bottom:2px; }
+.table-item summary{
+  list-style:none; cursor:pointer; padding:7px 8px; border-radius:4px;
+  font-family:var(--mono); font-size:12.5px; color:var(--text);
+  display:flex; align-items:center; gap:7px; user-select:none; position:relative;
+}
+.table-item summary::-webkit-details-marker{ display:none; }
+.table-item summary:hover{ background:var(--surface-2); }
+.table-item summary .chevron{ width:9px; height:9px; transition:transform .15s; color:var(--text-faint); flex-shrink:0; }
+.table-item[open] summary .chevron{ transform:rotate(90deg); }
+.table-item summary .n{ color:var(--teal); }
+.table-item .cols{ padding:2px 0 6px 26px; }
+.col-row{
+  font-family:var(--mono); font-size:11.5px; color:var(--text-dim);
+  padding:3px 6px; display:flex; justify-content:space-between; align-items:center; gap:6px; border-radius:3px;
+}
+.col-row:hover{ background:var(--surface-2); color:var(--text); }
+.col-row .col-left{ display:flex; align-items:center; gap:5px; min-width:0; }
+.col-row .col-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.col-row .type{ color:var(--text-faint); font-size:10.5px; white-space:nowrap; flex-shrink:0; }
+
+.sidebar-foot{
+  border-top:1px solid var(--line-soft); padding:10px 14px;
+  font-family:var(--mono); font-size:10.5px; color:var(--text-faint);
+}
+.sidebar-foot code{ color:var(--teal); }
+
+.sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:19; }
+
+/* Badges — small inline labels, e.g. status/type tags on a list row */
+.badge{
+  font-family:var(--mono); font-size:9px; font-weight:600; letter-spacing:0.03em;
+  padding:1px 4px; border-radius:3px; flex-shrink:0; line-height:1.4;
+}
+.badge-pk{ background:rgba(217,164,65,0.16); color:var(--accent); }
+.badge-unique{ background:var(--teal-soft); color:var(--teal); }
+.badge-notnull{ background:rgba(126,144,150,0.16); color:var(--text-dim); }
+
+/* Small icon-button that appears on row hover (e.g. a per-item action) */
+.row-action-btn{
+  margin-left:auto; opacity:0; width:18px; height:18px; flex-shrink:0; color:var(--text-faint);
+  display:flex; align-items:center; justify-content:center; border-radius:3px;
+}
+.table-item summary:hover .row-action-btn{ opacity:1; }
+.row-action-btn:hover{ color:var(--teal); background:var(--surface); }
+.row-action-btn svg{ width:12px; height:12px; }
+@media (hover: none){ .row-action-btn{ opacity:1; } } /* always show on touch devices */
+
+
+/* ---------------------------------------------------------------------------
+   6. MODAL
+   <div class="modal-overlay open" id="modalOverlay">
+     <div class="modal-box">
+       <div class="modal-head"><h2>Title</h2><span class="modal-close">✕</span></div>
+       <div class="modal-body">Body content</div>
+       <div class="modal-foot">Footer / actions</div>
+     </div>
+   </div>
+   JS: overlay.classList.toggle('open') to show/hide.
+--------------------------------------------------------------------------- */
+.modal-overlay{
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:60;
+  align-items:center; justify-content:center; padding:20px;
+}
+.modal-overlay.open{ display:flex; }
+.modal-box{
+  background:var(--surface); border:1px solid var(--line-soft); border-radius:10px;
+  width:min(720px, 100%); max-height:85vh; display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-head{
+  display:flex; align-items:center; justify-content:space-between; padding:14px 18px;
+  border-bottom:1px solid var(--line-soft); flex-shrink:0;
+}
+.modal-head h2{ font-size:14px; margin:0; font-weight:600; }
+.modal-close{ cursor:pointer; color:var(--text-faint); padding:4px; border-radius:5px; }
+.modal-close:hover{ background:var(--surface-2); color:var(--text); }
+.modal-body{ padding:18px; overflow-y:auto; font-size:13px; line-height:1.6; }
+.modal-foot{
+  display:flex; justify-content:space-between; gap:8px; padding:12px 18px;
+  border-top:1px solid var(--line-soft); flex-shrink:0;
+}
+
+
+/* ---------------------------------------------------------------------------
+   7. DATA GRID / TABLE
+   <table class="grid">
+     <thead><tr><th class="rownum">#</th><th>Column</th></tr></thead>
+     <tbody><tr><td class="rownum">1</td><td>Value</td></tr></tbody>
+   </table>
+--------------------------------------------------------------------------- */
+table.grid{ border-collapse:collapse; width:100%; font-family:var(--mono); font-size:12.5px; }
+table.grid thead th{
+  position:sticky; top:0; background:var(--surface); color:var(--teal);
+  text-align:left; padding:8px 14px; border-bottom:1px solid var(--line-soft);
+  font-weight:600; white-space:nowrap; z-index:1; cursor:pointer; user-select:none;
+}
+table.grid thead th .sort-arrow{ color:var(--accent); margin-left:4px; font-size:10px; }
+table.grid tbody td{
+  padding:6px 14px; border-bottom:1px solid rgba(38,50,55,0.5); white-space:nowrap; color:var(--text);
+}
+table.grid tbody tr:hover{ background:var(--surface-2); }
+table.grid tbody td.null{ color:var(--text-faint); font-style:italic; }
+table.grid tbody td.rownum{ color:var(--text-faint); text-align:right; }
+table.grid thead th.rownum{ width:1%; }
+@keyframes rowIn{ from{ opacity:0; transform:translateY(2px); } to{ opacity:1; transform:none; } }
+table.grid tbody tr{ animation: rowIn .18s ease both; }
+
+.row-cap-notice{
+  font-family:var(--mono); font-size:11px; color:var(--text-faint); padding:8px 14px;
+  border-top:1px solid var(--line-soft);
+}
+
+
+/* ---------------------------------------------------------------------------
+   8. STATUS TEXT / PILLS / TABS
+   <span class="status ok">Success message</span>
+   <span class="status err">Error message</span>
+   <div class="pill-tabs"><span class="pill-tab active">Tab 1</span><span class="pill-tab">Tab 2</span></div>
+--------------------------------------------------------------------------- */
+.status{ font-family:var(--mono); font-size:11.5px; color:var(--text-dim); }
+.status.ok{ color:var(--teal); }
+.status.err{ color:var(--error); }
+.meta{ font-family:var(--mono); font-size:10.5px; color:var(--text-faint); }
+
+.pill-tabs{ display:flex; gap:4px; }
+.pill-tab{
+  font-family:var(--mono); font-size:11px; padding:4px 9px; border-radius:4px;
+  color:var(--text-dim); cursor:pointer; border:1px solid transparent;
+}
+.pill-tab:hover{ background:var(--surface-2); }
+.pill-tab.active{ background:var(--teal-soft); color:var(--teal); border-color:rgba(79,166,154,0.35); }
+
+/* Monospace input, e.g. a search/filter box */
+.input-mono{
+  font-family:var(--mono); font-size:11.5px; background:var(--surface-2); color:var(--text);
+  border:1px solid var(--line-soft); border-radius:4px; padding:5px 9px;
+}
+.input-mono:focus{ outline:none; border-color:var(--teal); }
+.input-mono::placeholder{ color:var(--text-faint); }
+
+
+/* ---------------------------------------------------------------------------
+   9. PANELS / CARDS / EMPTY & ERROR STATES
+   <div class="error-box">Something went wrong: details here.</div>
+   <div class="empty-state"><div class="glyph">—</div><p>Nothing here yet.</p></div>
+--------------------------------------------------------------------------- */
+.error-box{
+  margin:16px; padding:12px 14px; background:var(--error-soft); border:1px solid rgba(201,96,76,0.35);
+  border-radius:5px; font-family:var(--mono); font-size:12.5px; color:#E8A99A; white-space:pre-wrap;
+}
+.empty-state{
+  height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  color:var(--text-faint); gap:8px; padding:30px;
+}
+.empty-state .glyph{ font-family:var(--mono); font-size:26px; color:var(--text-faint); opacity:.6; }
+.empty-state p{ font-size:12.5px; max-width:320px; text-align:center; margin:0; line-height:1.5; }
+
+/* Simple card / list-drawer, e.g. a history or activity feed */
+.list-drawer{
+  flex-shrink:0; border-top:1px solid var(--line-soft); background:var(--surface);
+  max-height:130px; overflow-y:auto;
+}
+.list-drawer-head{
+  padding:8px 16px; font-family:var(--mono); font-size:10.5px; color:var(--text-faint);
+  text-transform:uppercase; letter-spacing:0.08em; display:flex; justify-content:space-between;
+  position:sticky; top:0; background:var(--surface);
+}
+.list-drawer-item{
+  padding:6px 16px; font-family:var(--mono); font-size:11.5px; color:var(--text-dim);
+  cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  border-left:2px solid transparent;
+}
+.list-drawer-item:hover{ background:var(--surface-2); color:var(--text); border-left-color:var(--accent); }
+.list-drawer-item .t{ color:var(--text-faint); margin-right:8px; }
+
+
+/* ---------------------------------------------------------------------------
+   10. LOADING SCREEN
+   <div class="loading-screen"><span>Loading<span class="dots"></span></span></div>
+--------------------------------------------------------------------------- */
+.loading-screen{
+  position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px; z-index:50; color:var(--text-dim);
+  font-family:var(--mono); font-size:12.5px;
+}
+.loading-screen .dots::after{ content:''; animation: dots 1.2s steps(4,end) infinite; }
+@keyframes dots{ 0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'} }
+
+
+/* ---------------------------------------------------------------------------
+   11. RESIZE HANDLE (drag divider between two stacked panels)
+   <div class="resize-handle"><span></span></div>
+--------------------------------------------------------------------------- */
+.resize-handle{
+  height:10px; margin-top:-10px; position:relative; cursor:ns-resize; z-index:2;
+  display:flex; align-items:center; justify-content:center; touch-action:none;
+}
+.resize-handle span{ width:32px; height:3px; border-radius:2px; background:var(--line-soft); }
+.resize-handle:hover span, .resize-handle.dragging span{ background:var(--teal); }
+
+
+/* ---------------------------------------------------------------------------
+   12. CODEMIRROR EDITOR THEME (optional)
+   Only needed if your project also embeds a CodeMirror 5 editor.
+   Delete this whole section if you're not using CodeMirror.
+--------------------------------------------------------------------------- */
+.CodeMirror{ height:180px; font-family:var(--mono); font-size:13.5px; background:var(--bg); padding:10px 0; line-height:1.55; }
+.CodeMirror-gutters{ background:var(--bg); border-right:1px solid var(--line-soft); }
+.CodeMirror-linenumber{ color:var(--text-faint); }
+.CodeMirror .cm-error-line{ background:var(--error-soft) !important; }
+.CodeMirror .cm-error-squiggle{
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: #e5484d;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.cm-error-gutter-dot{
+  width:8px; height:8px; border-radius:50%;
+  background:#e5484d; margin:6px auto 0;
+  box-shadow:0 0 0 2px rgba(229,72,77,0.25);
+}
+.CodeMirror-gutters{ padding-right: 2px; }
+
+
+/* ---------------------------------------------------------------------------
+   13. RESPONSIVE / MOBILE
+   Assumes a header + optional sidebar + toolbar layout, same as KVSQL.
+   Adjust the breakpoint selectors if your markup differs.
+--------------------------------------------------------------------------- */
+@media (max-width: 860px){
+  header{ padding:10px 12px; }
+  .brand .sub{ display:none; }
+  .brand h1{ font-size:13.5px; }
+  .brand .mark{ width:26px; height:26px; font-size:12px; }
+  .menu-toggle{ display:flex; }
+  .header-actions{ gap:5px; }
+  .header-actions button{ padding:7px 9px; }
+  .header-actions .btn-label{ display:none; }
+  .header-actions button.primary .btn-label{ display:inline; }
+
+  .sidebar{
+    position:fixed; top:0; left:0; height:100%; width:min(78vw, 300px); z-index:20;
+    transform:translateX(-100%); transition:transform .2s ease; box-shadow:2px 0 24px rgba(0,0,0,0.4);
+  }
+  .sidebar.open{ transform:translateX(0); }
+  .sidebar-backdrop.open{ display:block; }
+
+  .toolbar{ padding:8px 10px; gap:6px; }
+  .toolbar button .btn-label{ display:none; }
+  .toolbar button{ padding:8px; }
+  .toolbar .hint{ display:none; }
+
+  .CodeMirror{ font-size:13px; }
+  table.grid{ font-size:11.5px; }
+  table.grid thead th, table.grid tbody td{ padding:6px 9px; }
+
+  .list-drawer{ max-height:100px; }
+}
+
+@media (max-width: 480px){
+  .brand h1{ font-size:12.5px; }
+  header{ padding:8px 10px; }
+  .header-actions button{ padding:6px 8px; }
+}
+
+@media (hover: none){
+  button, .col-row, .pill-tab{ min-height:30px; }
+}

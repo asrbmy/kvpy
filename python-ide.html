@@ -1,0 +1,1738 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Python IDE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kvsql-ui-kit.css">
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+<style>
+  :root{ --ide-font: var(--mono); }
+  html, body{ height:100%; overflow:hidden; }
+  body{ display:flex; flex-direction:column; }
+
+  html[data-theme="light"]{
+    --bg:#F6F4EF; --surface:#FFFFFF; --surface-2:#EEEAE0; --line-soft:#DAD3C4;
+    --text:#2B2620; --text-dim:#6E6656; --text-faint:#A79D89;
+    --accent:#B9822C; --accent-soft:rgba(185,130,44,0.12);
+    --teal:#2E7C71; --teal-soft:rgba(46,124,113,0.12);
+    --error:#B5432E; --error-soft:rgba(181,67,46,0.10);
+  }
+  html[data-theme="light"] .error-box{ color:#8C3620; }
+
+  .loading-screen{ transition:opacity .25s ease; }
+  .loading-screen.hidden{ opacity:0; pointer-events:none; }
+  .toolbar button.active{ border-color:var(--teal); color:var(--teal); }
+  .menu-toggle{ display:none; }
+
+  /* ---- menu bar ---- */
+  .menubar{ display:flex; align-items:center; gap:2px; padding:4px 14px; background:var(--surface); border-bottom:1px solid var(--line-soft); font-family:var(--mono); font-size:12px; flex-shrink:0; }
+  .menu-item{ background:transparent; border:1px solid transparent; color:var(--text-dim); padding:4px 10px; border-radius:4px; cursor:pointer; }
+  .menu-item:hover, .menu-item.open{ background:var(--surface-2); color:var(--text); }
+  .menu-dropdown{
+    position:fixed; z-index:60; min-width:220px; background:var(--surface); border:1px solid var(--line-soft);
+    border-radius:8px; padding:6px; box-shadow:0 12px 32px rgba(0,0,0,0.35); display:none; font-family:var(--mono); font-size:12px;
+  }
+  .menu-dropdown.open{ display:block; }
+  .menu-dropdown button{
+    display:flex; width:100%; justify-content:space-between; gap:14px; text-align:left; background:transparent;
+    border:none; color:var(--text); padding:7px 10px; border-radius:5px; cursor:pointer; font-family:var(--mono); font-size:12px;
+  }
+  .menu-dropdown button:hover{ background:var(--surface-2); color:var(--accent); }
+  .menu-dropdown button span.sc{ color:var(--text-faint); font-size:10.5px; }
+  .menu-divider{ height:1px; background:var(--line-soft); margin:5px 2px; }
+
+  /* ---- layout ---- */
+  .ide-main{ flex:1; display:flex; min-height:0; position:relative; }
+
+  /* ---- file explorer ---- */
+  .sidebar-head-actions{ display:flex; gap:2px; }
+  .sidebar-head-actions button{ padding:4px 5px; background:transparent; border-color:transparent; }
+  .sidebar-head-actions button:hover{ border-color:var(--line-soft); }
+  .sidebar-head-actions svg{ width:13px; height:13px; }
+  .col-row.file-row{ cursor:pointer; }
+  .col-row.file-row.active{ background:var(--accent-soft); color:var(--accent); }
+  .col-row.file-row.active .col-name{ color:var(--accent); }
+  .file-row .row-action-btn{ margin-left:6px; }
+
+  /* ---- editor ---- */
+  .editor-pane{ flex:1 1 60%; min-width:0; display:flex; flex-direction:column; background:var(--bg); }
+  .editor-titlebar{ display:flex; align-items:center; gap:8px; padding:6px 14px; border-bottom:1px solid var(--line-soft); font-family:var(--mono); font-size:11.5px; color:var(--text-dim); flex-shrink:0; background:var(--surface); }
+  .editor-titlebar .dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); }
+  .editor-titlebar .dot.debugging{ background:var(--error); animation:pulse 1s ease-in-out infinite; }
+  .editor-body{ flex:1; min-height:0; display:flex; }
+  .cm-host{ flex:1; min-height:0; overflow:hidden; }
+  .cm-host .cm-editor{ height:100%; outline:none; }
+  .cm-host .cm-scroller{ font-family:var(--ide-font); }
+  .minimap-host{ width:70px; flex-shrink:0; border-left:1px solid var(--line-soft); overflow:hidden; opacity:0.75; }
+  .minimap-host .cm-editor{ height:100%; }
+  .minimap-host .cm-scroller{ font-size:2.4px !important; line-height:3px !important; }
+  .minimap-host .cm-gutters{ display:none; }
+  .minimap-host{ display:none; }
+  .minimap-host.on{ display:block; }
+
+  .cm-breakpoint-gutter{ width:14px; cursor:pointer; }
+  .cm-breakpoint-dot{ width:8px; height:8px; border-radius:50%; margin:4px auto; background:transparent; }
+  .cm-breakpoint-gutter:hover .cm-breakpoint-dot{ background:rgba(201,96,76,0.4); }
+  .cm-breakpoint-dot.set{ background:var(--error) !important; }
+  .cm-debug-line{ background:rgba(217,164,65,0.18) !important; }
+
+  .v-resize{ width:10px; margin:0 -5px; position:relative; z-index:2; cursor:ew-resize; flex-shrink:0; display:flex; align-items:center; justify-content:center; touch-action:none; }
+  .v-resize span{ width:3px; height:34px; border-radius:2px; background:var(--line-soft); }
+  .v-resize:hover span, .v-resize.dragging span{ background:var(--teal); }
+
+  /* ---- debug controls ---- */
+  .debug-bar{ display:none; align-items:center; gap:6px; padding:6px 14px; border-bottom:1px solid var(--line-soft); background:var(--surface-2); flex-shrink:0; font-family:var(--mono); font-size:11.5px; color:var(--text-dim); }
+  .debug-bar.on{ display:flex; }
+  .debug-bar button{ padding:4px 9px; font-size:11px; }
+  .debug-bar .dbg-pos{ margin-left:auto; }
+
+  /* ---- output pane ---- */
+  .output-pane{ flex:0 0 440px; min-width:280px; max-width:70vw; display:flex; flex-direction:column; border-left:1px solid var(--line-soft); background:var(--surface); }
+  .output-tabs{ padding:10px 14px; border-bottom:1px solid var(--line-soft); flex-shrink:0; display:flex; justify-content:space-between; align-items:center; }
+  .pill-tab.has-error{ color:var(--error); }
+  .pill-tab.has-error.active{ background:var(--error-soft); color:var(--error); border-color:rgba(201,96,76,0.35); }
+
+  .console-view{ flex:1; overflow-y:auto; font-family:var(--ide-font); font-size:var(--term-fs, 12.5px); padding:10px 14px; line-height:1.65; }
+  .console-line{ white-space:pre-wrap; word-break:break-word; margin-bottom:1px; }
+  .console-line.stdout{ color:var(--text); }
+  .console-line.stderr{ color:var(--error); }
+  .console-line.sys{ color:var(--text-faint); font-style:italic; }
+  .console-line.sys.ok{ color:var(--teal); font-style:normal; }
+  .console-line.sys.fail{ color:var(--error); font-style:normal; }
+  .console-line.result{ color:var(--teal); }
+  .console-view .empty-state{ padding:40px 20px; }
+  .console-view img{ max-width:100%; border:1px solid var(--line-soft); border-radius:6px; margin:8px 0; display:block; }
+  .console-html-block{ margin:8px 0; overflow-x:auto; }
+  .console-html-block table.dataframe{ border-collapse:collapse; font-family:var(--ide-font); font-size:11.5px; width:100%; }
+  .console-html-block table.dataframe th{ background:var(--surface-2); color:var(--teal); text-align:left; padding:6px 10px; border-bottom:1px solid var(--line-soft); white-space:nowrap; }
+  .console-html-block table.dataframe td{ padding:5px 10px; border-bottom:1px solid rgba(38,50,55,0.35); white-space:nowrap; }
+  .console-html-block table.dataframe tr:hover{ background:var(--surface-2); }
+  .console-html-block table.grid{ width:100%; }
+
+  .console-view pre{ margin:0; font-family:var(--ide-font); font-size:11.5px; white-space:pre-wrap; word-break:break-word; color:var(--text-dim); }
+
+  /* ---- variables / call stack ---- */
+  .var-table{ width:100%; border-collapse:collapse; font-family:var(--ide-font); font-size:11.5px; }
+  .var-table td{ padding:5px 8px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+  .var-table td.vname{ color:var(--teal); white-space:nowrap; }
+  .var-table td.vtype{ color:var(--text-faint); white-space:nowrap; }
+  .var-table td.vval{ color:var(--text); word-break:break-all; }
+  .stack-list{ list-style:none; margin:0 0 14px; padding:0; font-family:var(--ide-font); font-size:11.5px; }
+  .stack-list li{ padding:5px 8px; border-bottom:1px solid var(--line-soft); color:var(--text-dim); }
+  .stack-list li:first-child{ color:var(--accent); }
+  .section-label{ font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-faint); margin:0 0 8px; padding-top:4px; }
+
+  /* ---- statusbar ---- */
+  .statusbar{ display:flex; align-items:center; gap:16px; padding:6px 16px; border-top:1px solid var(--line-soft); background:var(--surface); flex-shrink:0; flex-wrap:wrap; }
+  .statusbar .spacer{ flex:1; }
+  .status-dot{ display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--text-faint); margin-right:5px; }
+  .status.ok .status-dot{ background:var(--teal); }
+  .status.err .status-dot{ background:var(--error); }
+  .status.busy .status-dot{ background:var(--accent); animation:pulse 1s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+  /* ---- shared modal bits ---- */
+  .pkg-note{ font-size:11.5px; color:var(--text-faint); margin:0 0 12px; line-height:1.5; }
+  .pkg-search{ width:100%; margin-bottom:10px; }
+  .pkg-row{ display:flex; align-items:center; justify-content:space-between; padding:8px 2px; border-bottom:1px solid var(--line-soft); font-family:var(--mono); font-size:12.5px; }
+  .pkg-row:last-child{ border-bottom:none; }
+  .pkg-row .pkg-status{ color:var(--teal); font-size:11px; }
+  .pkg-row .pkg-status.failed{ color:var(--error); }
+  .pkg-row button{ padding:4px 10px; font-size:11px; }
+  .pkg-list{ max-height:300px; overflow-y:auto; }
+  .kbd-table{ width:100%; border-collapse:collapse; }
+  .kbd-table td{ padding:6px 0; font-size:12.5px; border-bottom:1px solid var(--line-soft); }
+  .kbd-table td:last-child{ text-align:right; color:var(--text-dim); }
+  .kbd-table kbd{ background:var(--surface-2); border:1px solid var(--line-soft); border-radius:3px; padding:1px 6px; font-family:var(--mono); font-size:11px; color:var(--text); }
+  .input-field{ margin-bottom:10px; }
+  .input-field label{ display:block; font-family:var(--mono); font-size:11px; color:var(--text-faint); margin-bottom:4px; }
+  .input-field input{ width:100%; }
+
+  /* ---- settings ---- */
+  .settings-group{ margin-bottom:18px; }
+  .settings-group h3{ font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--accent); margin:0 0 10px; border-bottom:1px solid var(--line-soft); padding-bottom:8px; }
+  .settings-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:7px 0; font-size:12.5px; color:var(--text-dim); }
+  .settings-row label.rowlabel{ color:var(--text); }
+  .settings-row select, .settings-row input[type=number]{ min-width:130px; }
+  .settings-row input[type=checkbox]{ width:16px; height:16px; accent-color:var(--teal); }
+  .settings-note{ font-size:11px; color:var(--text-faint); margin-top:2px; }
+
+  @media (max-width: 860px){
+    .ide-main{ flex-direction:column; }
+    .v-resize{ display:none; }
+    .menu-toggle{ display:flex !important; }
+    .menubar{ overflow-x:auto; }
+    .output-pane{ flex:0 0 260px; max-width:none; border-left:none; border-top:1px solid var(--line-soft); }
+    .statusbar{ gap:10px; padding:6px 10px; }
+    .statusbar .spacer{ display:none; }
+    .minimap-host{ display:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="bootScreen"><span>Booting Python runtime<span class="dots"></span></span></div>
+
+<header>
+  <div class="brand">
+    <button class="ghost menu-toggle" id="menuToggle" title="Toggle file explorer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <div class="mark">PY</div>
+    <div><h1>Python IDE</h1><div class="sub">Editor · Compiler · Interpreter</div></div>
+  </div>
+  <div class="header-actions">
+    <button class="ghost" id="btnSettings" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.6V21a2 2 0 11-4 0v-.2a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.6-1H3a2 2 0 110-4h.2a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.6V3a2 2 0 114 0v.2a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.6 1H21a2 2 0 110 4h-.2a1.7 1.7 0 00-1.6 1z"/></svg>
+      <span class="btn-label">Settings</span>
+    </button>
+    <button class="ghost" id="btnPackages" title="Manage Python packages">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg>
+      <span class="btn-label">Packages</span>
+    </button>
+    <button class="primary" id="btnSave" title="Save active file (Ctrl+S)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 19h16"/></svg>
+      <span class="btn-label">Save</span>
+    </button>
+  </div>
+</header>
+
+<div class="menubar" id="menubar">
+  <button class="menu-item" data-menu="file">File</button>
+  <button class="menu-item" data-menu="edit">Edit</button>
+  <button class="menu-item" data-menu="view">View</button>
+  <button class="menu-item" data-menu="run">Run</button>
+  <button class="menu-item" data-menu="terminal">Terminal</button>
+  <button class="menu-item" data-menu="help">Help</button>
+</div>
+<div class="menu-dropdown" id="menuDropdown"></div>
+
+<div class="toolbar">
+  <div class="toolbar-scroll">
+    <button class="primary" id="btnRun" disabled title="Run (Ctrl+Enter)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4l14 8-14 8V4z"/></svg>
+      <span class="btn-label">Run</span>
+    </button>
+    <button id="btnDebug" disabled title="Debug (records a step-through trace)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 9v3l2 2M9 3h6M4.5 6.5l1.5 1.5M19.5 6.5L18 8"/></svg>
+      <span class="btn-label">Debug</span>
+    </button>
+    <button id="btnStop" disabled title="Stop execution">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+      <span class="btn-label">Stop</span>
+    </button>
+    <button class="ghost" id="btnClear" title="Clear terminal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3m-8 0l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/></svg>
+      <span class="btn-label">Clear</span>
+    </button>
+    <div class="toolbar-divider"></div>
+    <button class="ghost" id="btnShortcuts" title="Keyboard shortcuts">⌘ Shortcuts</button>
+  </div>
+  <div class="hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> run · <kbd>Ctrl</kbd>+<kbd>S</kbd> save · <kbd>Ctrl</kbd>+<kbd>Space</kbd> autocomplete</div>
+</div>
+
+<div class="debug-bar" id="debugBar">
+  <span>🐞 Debugging (recorded trace) —</span>
+  <button id="dbgStepInto" title="Step Into">↳ Into</button>
+  <button id="dbgStepOver" title="Step Over">⇥ Over</button>
+  <button id="dbgStepOut" title="Step Out">⇤ Out</button>
+  <button id="dbgContinue" title="Continue to next breakpoint">▶ Continue</button>
+  <button id="dbgStop" title="Stop debugging">■ Stop</button>
+  <span class="dbg-pos" id="dbgPos">step 0 / 0</span>
+</div>
+
+<main class="ide-main" id="ideMain">
+  <aside class="sidebar" id="fileSidebar">
+    <div class="sidebar-head">
+      <span>Project</span>
+      <div class="sidebar-head-actions">
+        <button title="New file" id="btnNewFile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M12 11v6M9 14h6"/></svg></button>
+        <button title="New folder" id="btnNewFolder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/><path d="M12 11v4M10 13h4"/></svg></button>
+        <button title="Upload files" id="btnUpload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg></button>
+      </div>
+    </div>
+    <input type="file" id="uploadInput" hidden multiple accept=".py,.txt,.csv,.json,.md,.sql,.zip,.ipynb">
+    <div class="table-list" id="fileTreeRoot"></div>
+    <div class="sidebar-foot">Files sync into Pyodide's FS · <code>import utils</code> works</div>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <section class="editor-pane">
+    <div class="editor-titlebar"><span class="dot" id="fileDot"></span><span id="activeFileLabel">main.py</span></div>
+    <div class="editor-body">
+      <div class="cm-host" id="editorHost"></div>
+      <div class="minimap-host" id="minimapHost"></div>
+    </div>
+  </section>
+
+  <div class="v-resize" id="vResize"><span></span></div>
+
+  <section class="output-pane" id="outputPane">
+    <div class="output-tabs">
+      <div class="pill-tabs">
+        <span class="pill-tab active" data-tab="terminal">Terminal</span>
+        <span class="pill-tab" data-tab="problems" id="problemsTab">Problems</span>
+        <span class="pill-tab" data-tab="output">Output</span>
+        <span class="pill-tab" data-tab="variables">Variables</span>
+      </div>
+    </div>
+    <div class="console-view" id="terminalView">
+      <div class="empty-state" id="terminalEmpty"><div class="glyph">›_</div><p>Run your code (Ctrl+Enter) to see output here.</p></div>
+    </div>
+    <div class="console-view" id="problemsView" style="display:none;">
+      <div class="empty-state" id="problemsEmpty"><div class="glyph">✓</div><p>No problems yet.</p></div>
+    </div>
+    <div class="console-view" id="outputView" style="display:none;">
+      <div class="empty-state" id="outputEmpty"><div class="glyph">▤</div><p>DataFrames, charts, and file previews show up here.</p></div>
+    </div>
+    <div class="console-view" id="variablesView" style="display:none;">
+      <div class="empty-state" id="variablesEmpty"><div class="glyph">{ }</div><p>Variables from your last run (or the current debug step) show up here.</p></div>
+    </div>
+  </section>
+</main>
+
+<div class="statusbar">
+  <span class="status" id="statusRuntime"><span class="status-dot"></span>Loading runtime…</span>
+  <span class="spacer"></span>
+  <span class="meta" id="statusPos">Ln 1, Col 1</span>
+  <span class="meta" id="statusLen">0 chars</span>
+  <span class="meta" id="statusFile">main.py</span>
+</div>
+
+<!-- Shortcuts modal -->
+<div class="modal-overlay" id="shortcutsModal">
+  <div class="modal-box">
+    <div class="modal-head"><h2>Keyboard shortcuts</h2><span class="modal-close" id="shortcutsClose">✕</span></div>
+    <div class="modal-body">
+      <table class="kbd-table">
+        <tr><td>Run code</td><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td></tr>
+        <tr><td>Save active file</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td></tr>
+        <tr><td>Autocomplete</td><td><kbd>Ctrl</kbd>+<kbd>Space</kbd></td></tr>
+        <tr><td>Find / Replace</td><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>H</kbd></td></tr>
+        <tr><td>Undo / Redo</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td></tr>
+        <tr><td>Toggle breakpoint</td><td>Click line-number gutter</td></tr>
+        <tr><td>Hover a builtin</td><td>Shows docs</td></tr>
+        <tr><td>Type <code>str.</code></td><td>method suggestions</td></tr>
+        <tr><td>Type <code>import pan</code></td><td>package suggestions</td></tr>
+      </table>
+    </div>
+    <div class="modal-foot"><span class="meta">Python IDE</span><button class="primary" id="shortcutsGotIt">Got it</button></div>
+  </div>
+</div>
+
+<!-- Packages modal -->
+<div class="modal-overlay" id="packagesModal">
+  <div class="modal-box">
+    <div class="modal-head"><h2>Python packages</h2><span class="modal-close" id="packagesClose">✕</span></div>
+    <div class="modal-body">
+      <p class="pkg-note">Powered by Pyodide — packages need a WebAssembly build. Pure-Python packages and the listed
+      scientific-stack packages install fine; packages relying on native networking, GUIs, or unported C-extensions
+      won't work in the browser. Imports also auto-install on Run.</p>
+      <input class="input-mono pkg-search" id="pkgSearch" placeholder="Search packages…">
+      <div class="pkg-list" id="pkgList"></div>
+    </div>
+    <div class="modal-foot"><span class="meta">micropip handles pure-Python fallbacks</span><button class="primary" id="packagesDone">Done</button></div>
+  </div>
+</div>
+
+<!-- Program input modal -->
+<div class="modal-overlay" id="inputModal">
+  <div class="modal-box">
+    <div class="modal-head"><h2>Program input</h2><span class="modal-close" id="inputModalClose">✕</span></div>
+    <div class="modal-body">
+      <p class="pkg-note">Your code calls <code>input()</code>. Browser Python can't pause mid-script to wait for a
+      keypress, so provide the values it will read, in order, and they'll be fed in when each <code>input()</code> runs.</p>
+      <div id="inputFieldsHost"></div>
+    </div>
+    <div class="modal-foot"><button class="ghost" id="inputModalCancel">Cancel</button><button class="primary" id="inputModalRun">Run</button></div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-box">
+    <div class="modal-head"><h2>Settings</h2><span class="modal-close" id="settingsClose">✕</span></div>
+    <div class="modal-body">
+      <div class="settings-group">
+        <h3>Editor</h3>
+        <div class="settings-row"><label class="rowlabel">Theme</label>
+          <select id="setTheme"><option value="dark">Dark</option><option value="light">Light</option></select></div>
+        <div class="settings-row"><label class="rowlabel">Font</label>
+          <select id="setFont"><option value="'IBM Plex Mono', monospace">IBM Plex Mono</option><option value="Menlo, Consolas, monospace">System Mono</option><option value="'Courier New', monospace">Courier New</option></select></div>
+        <div class="settings-row"><label class="rowlabel">Font size</label>
+          <input type="number" id="setFontSize" min="10" max="24" step="0.5"></div>
+        <div class="settings-row"><label class="rowlabel">Tab size</label>
+          <select id="setTabSize"><option value="2">2</option><option value="4">4</option><option value="8">8</option></select></div>
+        <div class="settings-row"><label class="rowlabel">Word wrap</label><input type="checkbox" id="setWordWrap"></div>
+        <div class="settings-row"><label class="rowlabel">Minimap</label><input type="checkbox" id="setMinimap"></div>
+        <div class="settings-row"><label class="rowlabel">Auto save</label><input type="checkbox" id="setAutoSave"></div>
+        <div class="settings-note">Auto save writes your project to this browser's local storage every 20s and on file switch.</div>
+      </div>
+      <div class="settings-group">
+        <h3>Python</h3>
+        <div class="settings-row"><label class="rowlabel">Runtime</label><span id="setPyVersion" class="meta">Loading…</span></div>
+        <div class="settings-row"><label class="rowlabel">Packages</label><button class="ghost" id="setOpenPackages">Manage…</button></div>
+        <div class="settings-row"><label class="rowlabel">Restart runtime</label><button class="ghost" id="setRestartRuntime">Restart</button></div>
+      </div>
+      <div class="settings-group">
+        <h3>Terminal</h3>
+        <div class="settings-row"><label class="rowlabel">Font size</label><input type="number" id="setTermFontSize" min="10" max="20" step="0.5"></div>
+        <div class="settings-row"><label class="rowlabel">Clear on run</label><input type="checkbox" id="setClearOnRun"></div>
+      </div>
+      <div class="settings-group">
+        <h3>Security</h3>
+        <p class="pkg-note">
+          This IDE runs Python entirely in your browser via Pyodide (WebAssembly) — no code is ever sent to a
+          server, so classic remote-execution risks (server filesystem/credential access, etc.) don't apply here.
+          Execution is isolated in a Web Worker, so an infinite loop or crash can be stopped without freezing the
+          page, and each Worker gets a fresh Pyodide heap after Stop/Restart. If you ever move Python execution to
+          a server for a multi-user product, don't call <code>exec(user_code)</code> directly — run it in an
+          isolated, non-root container with CPU/memory limits, an execution timeout, restricted filesystem and
+          network access, process limits, a package allow-list, and cleanup after every run.
+        </p>
+      </div>
+    </div>
+    <div class="modal-foot"><span class="meta">Settings apply immediately</span><button class="primary" id="settingsDone">Done</button></div>
+  </div>
+</div>
+
+<script type="module">
+import {
+  EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter,
+  drawSelection, dropCursor, rectangularSelection, crosshairCursor, gutter, GutterMarker, hoverTooltip
+} from "https://esm.sh/@codemirror/view@6";
+import { EditorState, Compartment, StateEffect, StateField, RangeSet } from "https://esm.sh/@codemirror/state@6";
+import { defaultKeymap, history, historyKeymap, indentWithTab, undo, redo } from "https://esm.sh/@codemirror/commands@6";
+import { python } from "https://esm.sh/@codemirror/lang-python@6";
+import { syntaxHighlighting, HighlightStyle, indentOnInput, bracketMatching, foldGutter, foldKeymap, indentUnit } from "https://esm.sh/@codemirror/language@6";
+import { closeBrackets, closeBracketsKeymap, autocompletion, completionKeymap, startCompletion } from "https://esm.sh/@codemirror/autocomplete@6";
+import { searchKeymap, highlightSelectionMatches, openSearchPanel, replaceAll } from "https://esm.sh/@codemirror/search@6";
+import { linter, lintGutter, forceLinting } from "https://esm.sh/@codemirror/lint@6";
+import { Decoration } from "https://esm.sh/@codemirror/view@6";
+import { tags as t } from "https://esm.sh/@lezer/highlight@1";
+
+/* =================================================================
+   THEME
+================================================================= */
+const darkViewTheme = EditorView.theme({
+  "&": { color: "#DCE4E6", backgroundColor: "#0F1416" },
+  ".cm-content": { caretColor: "#D9A441" },
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#D9A441" },
+  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": { backgroundColor: "rgba(79,166,154,0.28)" },
+  ".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.035)" },
+  ".cm-activeLineGutter": { backgroundColor: "rgba(255,255,255,0.035)" },
+  ".cm-gutters": { backgroundColor: "#0F1416", color: "#4E5D62", border: "none", borderRight: "1px solid #263237" },
+  ".cm-matchingBracket, .cm-nonmatchingBracket": { backgroundColor: "rgba(217,164,65,0.22)", outline: "1px solid rgba(217,164,65,0.4)" },
+  ".cm-searchMatch": { backgroundColor: "rgba(79,166,154,0.25)" },
+  ".cm-searchMatch.cm-searchMatch-selected": { backgroundColor: "rgba(217,164,65,0.35)" },
+  ".cm-tooltip": { backgroundColor: "#1D262A", border: "1px solid #263237", color: "#DCE4E6", fontFamily: "var(--sans)", fontSize: "12.5px" },
+  ".cm-tooltip-autocomplete ul li[aria-selected]": { backgroundColor: "rgba(217,164,65,0.16)", color: "#DCE4E6" },
+  ".cm-panels": { backgroundColor: "#161D20", color: "#DCE4E6" },
+  ".cm-panel input": { backgroundColor: "#1D262A", color: "#DCE4E6", border: "1px solid #263237", borderRadius: "3px" },
+}, { dark: true });
+
+const lightViewTheme = EditorView.theme({
+  "&": { color: "#2B2620", backgroundColor: "#F6F4EF" },
+  ".cm-content": { caretColor: "#B9822C" },
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#B9822C" },
+  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": { backgroundColor: "rgba(46,124,113,0.20)" },
+  ".cm-activeLine": { backgroundColor: "rgba(0,0,0,0.035)" },
+  ".cm-activeLineGutter": { backgroundColor: "rgba(0,0,0,0.05)" },
+  ".cm-gutters": { backgroundColor: "#F6F4EF", color: "#A79D89", border: "none", borderRight: "1px solid #DAD3C4" },
+  ".cm-matchingBracket, .cm-nonmatchingBracket": { backgroundColor: "rgba(185,130,44,0.22)", outline: "1px solid rgba(185,130,44,0.4)" },
+  ".cm-searchMatch": { backgroundColor: "rgba(46,124,113,0.22)" },
+  ".cm-searchMatch.cm-searchMatch-selected": { backgroundColor: "rgba(185,130,44,0.3)" },
+  ".cm-tooltip": { backgroundColor: "#FFFFFF", border: "1px solid #DAD3C4", color: "#2B2620", fontFamily: "var(--sans)", fontSize: "12.5px" },
+  ".cm-tooltip-autocomplete ul li[aria-selected]": { backgroundColor: "rgba(185,130,44,0.16)", color: "#2B2620" },
+  ".cm-panels": { backgroundColor: "#FFFFFF", color: "#2B2620" },
+  ".cm-panel input": { backgroundColor: "#F6F4EF", color: "#2B2620", border: "1px solid #DAD3C4", borderRadius: "3px" },
+}, { dark: false });
+
+const darkHighlight = HighlightStyle.define([
+  { tag: t.keyword, color: "#D9A441", fontWeight: "600" },
+  { tag: [t.controlKeyword, t.operatorKeyword], color: "#D9A441", fontWeight: "600" },
+  { tag: [t.string, t.special(t.string)], color: "#4FA69A" },
+  { tag: t.comment, color: "#4E5D62", fontStyle: "italic" },
+  { tag: [t.number, t.bool, t.null], color: "#E6B559" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#8FD6CB" },
+  { tag: t.definition(t.variableName), color: "#DCE4E6" },
+  { tag: t.className, color: "#D9A441" },
+  { tag: [t.propertyName, t.attributeName], color: "#7E9096" },
+  { tag: t.operator, color: "#7E9096" },
+  { tag: t.punctuation, color: "#7E9096" },
+  { tag: t.variableName, color: "#DCE4E6" },
+  { tag: t.invalid, color: "#C9604C", textDecoration: "underline wavy" },
+]);
+const lightHighlight = HighlightStyle.define([
+  { tag: t.keyword, color: "#9C6B12", fontWeight: "600" },
+  { tag: [t.controlKeyword, t.operatorKeyword], color: "#9C6B12", fontWeight: "600" },
+  { tag: [t.string, t.special(t.string)], color: "#2F7C72" },
+  { tag: t.comment, color: "#A79D89", fontStyle: "italic" },
+  { tag: [t.number, t.bool, t.null], color: "#B9822C" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "#20685E" },
+  { tag: t.definition(t.variableName), color: "#2B2620" },
+  { tag: t.className, color: "#9C6B12" },
+  { tag: [t.propertyName, t.attributeName], color: "#6E6656" },
+  { tag: t.operator, color: "#6E6656" },
+  { tag: t.punctuation, color: "#6E6656" },
+  { tag: t.variableName, color: "#2B2620" },
+  { tag: t.invalid, color: "#B5432E", textDecoration: "underline wavy" },
+]);
+
+/* =================================================================
+   AUTOCOMPLETE + DOCUMENTATION
+================================================================= */
+const TYPE_METHODS = {
+  str: ["capitalize","casefold","center","count","encode","endswith","expandtabs","find","format","format_map","index","isalnum","isalpha","isascii","isdecimal","isdigit","isidentifier","islower","isnumeric","isprintable","isspace","istitle","isupper","join","ljust","lower","lstrip","maketrans","partition","removeprefix","removesuffix","replace","rfind","rindex","rjust","rpartition","rsplit","rstrip","split","splitlines","startswith","strip","swapcase","title","translate","upper","zfill"],
+  list: ["append","clear","copy","count","extend","index","insert","pop","remove","reverse","sort"],
+  dict: ["clear","copy","fromkeys","get","items","keys","pop","popitem","setdefault","update","values"],
+  set: ["add","clear","copy","difference","difference_update","discard","intersection","intersection_update","isdisjoint","issubset","issuperset","pop","remove","symmetric_difference","symmetric_difference_update","union","update"],
+  int: ["bit_length","bit_count","to_bytes","from_bytes","conjugate"],
+  float: ["is_integer","hex","fromhex","conjugate"],
+  tuple: ["count","index"],
+};
+const PACKAGE_NAMES = ["numpy","pandas","matplotlib","scipy","scikit-learn","sympy","networkx","pillow","requests","regex","toolz","attrs","python-dateutil","pytz","seaborn","statsmodels","micropip","json","math","random","re","os","sys","itertools","collections","datetime","functools","typing","pathlib","string","statistics","csv","io"];
+
+function pythonMemberCompletions(context) {
+  const before = context.matchBefore(/([A-Za-z_][A-Za-z0-9_]*|["'][^"']*["']|\])\.\w*/);
+  if (!before) return null;
+  const dotIdx = before.text.lastIndexOf(".");
+  const head = before.text.slice(0, dotIdx);
+  let typeKey = null;
+  if (/^["']/.test(head)) typeKey = "str";
+  else if (head === "]") typeKey = "list";
+  else if (TYPE_METHODS[head]) typeKey = head;
+  if (!typeKey) return null;
+  const options = TYPE_METHODS[typeKey].map((name) => ({ label: name, type: "method", detail: typeKey }));
+  return { from: before.from + dotIdx + 1, options, validFor: /^\w*$/ };
+}
+function pythonImportCompletions(context) {
+  const before = context.matchBefore(/(import|from)\s+[\w.]*/);
+  if (!before) return null;
+  const word = context.matchBefore(/[\w.]*$/);
+  const options = PACKAGE_NAMES.map((name) => ({ label: name, type: "namespace" }));
+  return { from: word ? word.from : context.pos, options, validFor: /^[\w.]*$/ };
+}
+
+const DOCS = {
+  print: "print(*objects, sep=' ', end='\\n')\nWrite objects to stdout, separated by sep, followed by end.",
+  len: "len(obj) -> int\nReturn the number of items in a container.",
+  range: "range(stop) / range(start, stop, step)\nAn immutable sequence of numbers, commonly used for looping.",
+  input: "input(prompt='') -> str\nRead a line from stdin (pre-filled in this browser IDE).",
+  str: "str(object='') -> str\nCreate a new string object; also the string type itself.",
+  int: "int(x=0, base=10) -> int\nConvert a number or string to an integer.",
+  float: "float(x=0.0) -> float\nConvert a string or number to a floating point number.",
+  list: "list(iterable=()) -> list\nBuild a new mutable list.",
+  dict: "dict(**kwargs) -> dict\nCreate a new mutable mapping.",
+  set: "set(iterable=()) -> set\nCreate a new mutable set of unique items.",
+  tuple: "tuple(iterable=()) -> tuple\nCreate a new immutable ordered sequence.",
+  open: "open(file, mode='r') -> file object\nOpen a file and return a file object.",
+  sum: "sum(iterable, start=0)\nAdd the items of an iterable, left to right.",
+  min: "min(iterable, *, key=None)\nReturn the smallest item.",
+  max: "max(iterable, *, key=None)\nReturn the largest item.",
+  sorted: "sorted(iterable, *, key=None, reverse=False) -> list\nReturn a new sorted list.",
+  enumerate: "enumerate(iterable, start=0)\nYield (index, value) pairs.",
+  zip: "zip(*iterables)\nAggregate elements from each iterable into tuples.",
+  map: "map(function, iterable)\nApply function to every item of iterable.",
+  filter: "filter(function, iterable)\nKeep items where function(item) is truthy.",
+  type: "type(object) -> type\nReturn the type of an object.",
+  isinstance: "isinstance(object, classinfo) -> bool\nCheck if object is an instance of classinfo.",
+  def: "def name(params):\n    ...\nDefine a function.",
+  class: "class Name:\n    ...\nDefine a class.",
+  for: "for item in iterable:\n    ...\nLoop over items of an iterable.",
+  while: "while condition:\n    ...\nLoop while condition is true.",
+  if: "if condition:\n    ...\nConditional branch.",
+  import: "import module\nBring a module into scope.",
+  from: "from module import name\nImport specific names from a module.",
+  try: "try:\n    ...\nexcept Error:\n    ...\nHandle exceptions.",
+  lambda: "lambda args: expr\nAn anonymous inline function.",
+  with: "with ctx as name:\n    ...\nRun a block under a context manager.",
+  yield: "yield value\nProduce a value from a generator function.",
+  async: "async def name(...):\n    ...\nDefine a coroutine function.",
+  await: "await coro\nSuspend until an awaitable completes.",
+};
+const docsTooltip = hoverTooltip((view, pos, side) => {
+  const { from, to, text } = view.state.doc.lineAt(pos);
+  let start = pos, end = pos;
+  while (start > from && /\w/.test(text[start - from - 1])) start--;
+  while (end < to && /\w/.test(text[end - from])) end++;
+  if (start === end) return null;
+  const word = text.slice(start - from, end - from);
+  if (!DOCS[word]) return null;
+  return {
+    pos: start, end,
+    above: true,
+    create() {
+      const dom = document.createElement("div");
+      dom.style.cssText = "max-width:340px;padding:8px 10px;white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;line-height:1.5;";
+      dom.textContent = DOCS[word];
+      return { dom };
+    },
+  };
+});
+
+/* =================================================================
+   BREAKPOINT GUTTER
+================================================================= */
+let activeFilePath = "main.py"; // declared early: referenced synchronously by the breakpoint gutter on first editor mount
+let breakpoints = {}; // { "path": Set(lineNumbers) }
+function bpSetFor(path) { if (!breakpoints[path]) breakpoints[path] = new Set(); return breakpoints[path]; }
+function toggleBreakpoint(lineNo) {
+  const set = bpSetFor(activeFilePath);
+  if (set.has(lineNo)) set.delete(lineNo); else set.add(lineNo);
+  view.dispatch({});
+}
+class BPMarker extends GutterMarker {
+  toDOM() { const d = document.createElement("div"); d.className = "cm-breakpoint-dot set"; return d; }
+}
+const bpMarker = new BPMarker();
+const breakpointGutterExt = gutter({
+  class: "cm-breakpoint-gutter",
+  markers(view2) {
+    const set = bpSetFor(activeFilePath);
+    const marks = [];
+    for (const lineNo of set) {
+      if (lineNo >= 1 && lineNo <= view2.state.doc.lines) marks.push(bpMarker.range(view2.state.doc.line(lineNo).from));
+    }
+    marks.sort((a, b) => a.from - b.from);
+    return RangeSet.of(marks);
+  },
+  initialSpacer: () => bpMarker,
+  domEventHandlers: { mousedown(view2, line) { toggleBreakpoint(view2.state.doc.lineAt(line.from).number); return true; } },
+});
+
+/* =================================================================
+   DEBUG LINE HIGHLIGHT
+================================================================= */
+const setDebugLine = StateEffect.define();
+const debugLineField = StateField.define({
+  create() { return Decoration.none; },
+  update(deco, tr) {
+    deco = deco.map(tr.changes);
+    for (const e of tr.effects) if (e.is(setDebugLine)) {
+      deco = e.value === null ? Decoration.none : Decoration.set([Decoration.line({ class: "cm-debug-line" }).range(e.value)]);
+    }
+    return deco;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+/* =================================================================
+   EDITOR
+================================================================= */
+const themeCompartment = new Compartment();
+const wrapCompartment = new Compartment();
+const fontSizeCompartment = new Compartment();
+const tabSizeCompartment = new Compartment();
+
+let currentDiagnostics = [];
+const pyLinter = linter(() => currentDiagnostics, { delay: 0 });
+let minimapView = null; // declared early: referenced by the updateListener below
+
+const state = EditorState.create({
+  doc: "",
+  extensions: [
+    lineNumbers(), highlightActiveLineGutter(), highlightActiveLine(),
+    drawSelection(), dropCursor(), rectangularSelection(), crosshairCursor(),
+    EditorState.allowMultipleSelections.of(true),
+    indentOnInput(), bracketMatching(), closeBrackets(), foldGutter(), lintGutter(), breakpointGutterExt,
+    history(), highlightSelectionMatches(),
+    autocompletion({ override: [pythonMemberCompletions, pythonImportCompletions] }),
+    python(), docsTooltip, debugLineField,
+    pyLinter,
+    themeCompartment.of([darkViewTheme, syntaxHighlighting(darkHighlight)]),
+    wrapCompartment.of([]),
+    fontSizeCompartment.of(EditorView.theme({ ".cm-content, .cm-gutters": { fontSize: "13.5px" } })),
+    tabSizeCompartment.of(indentUnit.of("    ")),
+    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap, ...completionKeymap, indentWithTab, { key: "Mod-Space", run: startCompletion }]),
+    EditorView.updateListener.of((u) => {
+      if (u.docChanged || u.selectionSet) updateStatusBar();
+      if (u.docChanged && minimapView) minimapView.dispatch({ changes: u.changes });
+    }),
+  ],
+});
+const view = new EditorView({ state, parent: document.getElementById("editorHost") });
+
+/* minimap (simple mirrored read-only tiny view) */
+function buildMinimap() {
+  minimapView = new EditorView({
+    state: EditorState.create({ doc: view.state.doc, extensions: [EditorView.editable.of(false), python(), syntaxHighlighting(darkHighlight)] }),
+    parent: document.getElementById("minimapHost"),
+  });
+}
+buildMinimap();
+
+let fontSize = 13.5;
+function applyFontSize() { view.dispatch({ effects: fontSizeCompartment.reconfigure(EditorView.theme({ ".cm-content, .cm-gutters": { fontSize: fontSize + "px" } })) }); }
+function increaseFont() { fontSize = Math.min(24, fontSize + 1); applyFontSize(); document.getElementById("setFontSize").value = fontSize; }
+function decreaseFont() { fontSize = Math.max(10, fontSize - 1); applyFontSize(); document.getElementById("setFontSize").value = fontSize; }
+
+let wrapOn = false;
+function setWrap(on) { wrapOn = on; view.dispatch({ effects: wrapCompartment.reconfigure(wrapOn ? EditorView.lineWrapping : []) }); document.getElementById("setWordWrap").checked = wrapOn; }
+function toggleWrap() { setWrap(!wrapOn); }
+
+let dark = true;
+function setTheme(isDark) {
+  dark = isDark;
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  view.dispatch({ effects: themeCompartment.reconfigure(dark ? [darkViewTheme, syntaxHighlighting(darkHighlight)] : [lightViewTheme, syntaxHighlighting(lightHighlight)]) });
+  document.getElementById("setTheme").value = dark ? "dark" : "light";
+}
+function toggleTheme() { setTheme(!dark); }
+
+function setTabSize(n) { view.dispatch({ effects: tabSizeCompartment.reconfigure(indentUnit.of(" ".repeat(n))) }); document.getElementById("setTabSize").value = String(n); }
+function setFontFamily(family) { document.documentElement.style.setProperty("--ide-font", family); document.getElementById("setFont").value = family; }
+function setMinimap(on) { document.getElementById("minimapHost").classList.toggle("on", on); document.getElementById("setMinimap").checked = on; }
+function setTermFontSize(px) { document.documentElement.style.setProperty("--term-fs", px + "px"); document.getElementById("setTermFontSize").value = px; }
+
+const statusPos = document.getElementById("statusPos");
+const statusLen = document.getElementById("statusLen");
+const statusFile = document.getElementById("statusFile");
+function updateStatusBar() {
+  const sel = view.state.selection.main;
+  const line = view.state.doc.lineAt(sel.head);
+  statusPos.textContent = `Ln ${line.number}, Col ${sel.head - line.from + 1}` + (view.state.selection.ranges.length > 1 ? ` · ${view.state.selection.ranges.length} cursors` : "");
+  statusLen.textContent = `${view.state.doc.length} chars`;
+}
+
+/* =================================================================
+   FILE EXPLORER (in-memory virtual filesystem, JSON-serializable)
+================================================================= */
+const STARTER_MAIN = `# main.py — try Run (Ctrl+Enter), or Debug to step through it
+from utils import add, average
+import pandas as pd
+
+name = input("Enter your name: ")
+print(f"Hello, {name}! Welcome to the Python IDE.")
+
+print("2 + 3 =", add(2, 3))
+print("average of [1,2,3,4] =", average([1, 2, 3, 4]))
+
+df = pd.read_csv("data/example.csv")
+df
+`;
+const STARTER_UTILS = `def add(a, b):
+    """Add two numbers together."""
+    return a + b
+
+
+def average(numbers):
+    return sum(numbers) / len(numbers) if numbers else 0
+`;
+const STARTER_README = `# Project
+
+Edited in the browser-based Python IDE.
+
+- \`main.py\` — entry point, run with Ctrl+Enter
+- \`utils.py\` — imported helper functions
+- \`data/example.csv\` — sample data for pandas
+`;
+const STARTER_CSV = `name,age,marks\nRahul,17,92\nAmit,18,87\nPriya,19,95\n`;
+const STARTER_REQS = `pandas\nmatplotlib\n`;
+
+function defaultTree() {
+  return { type: "folder", name: "PROJECT", path: "", children: [
+    { type: "file", name: "main.py", path: "main.py", content: STARTER_MAIN },
+    { type: "file", name: "utils.py", path: "utils.py", content: STARTER_UTILS },
+    { type: "file", name: "requirements.txt", path: "requirements.txt", content: STARTER_REQS },
+    { type: "file", name: "README.md", path: "README.md", content: STARTER_README },
+    { type: "folder", name: "data", path: "data", children: [
+      { type: "file", name: "example.csv", path: "data/example.csv", content: STARTER_CSV },
+    ]},
+  ]};
+}
+let fileTree = defaultTree();
+
+function findNode(path, node = fileTree) {
+  if (node.path === path) return node;
+  if (node.children) { for (const c of node.children) { const r = findNode(path, c); if (r) return r; } }
+  return null;
+}
+function findParent(path, node = fileTree) {
+  if (node.children) { for (const c of node.children) { if (c.path === path) return node; const r = findParent(path, c); if (r) return r; } }
+  return null;
+}
+function flattenFiles(node = fileTree, out = {}) {
+  if (node.type === "file") out[node.path] = node.content;
+  if (node.children) node.children.forEach((c) => flattenFiles(c, out));
+  return out;
+}
+function uniquePath(parentPath, name) {
+  let base = parentPath ? parentPath + "/" + name : name;
+  let candidate = base, i = 1;
+  while (findNode(candidate)) {
+    const dot = name.lastIndexOf(".");
+    const stem = dot > 0 ? name.slice(0, dot) : name; const ext = dot > 0 ? name.slice(dot) : "";
+    candidate = (parentPath ? parentPath + "/" : "") + `${stem}-${i}${ext}`; i++;
+  }
+  return candidate;
+}
+function saveActiveFileFromEditor() { const node = findNode(activeFilePath); if (node) node.content = view.state.doc.toString(); }
+function openFile(path) {
+  saveActiveFileFromEditor();
+  const node = findNode(path);
+  if (!node || node.type !== "file") return;
+  activeFilePath = path;
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: node.content } });
+  document.getElementById("activeFileLabel").textContent = path;
+  statusFile.textContent = path;
+  renderFileTree(); updateStatusBar(); view.dispatch({});
+  if (/\.(csv|json)$/i.test(path)) showPreview(path);
+  view.focus();
+}
+
+const iconFile = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;flex-shrink:0;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>`;
+function renderNode(node) {
+  if (node.type === "file") {
+    const active = node.path === activeFilePath;
+    return `<div class="col-row file-row${active ? " active" : ""}" data-path="${node.path}">
+      <div class="col-left">${iconFile}<span class="col-name">${node.name}</span></div>
+      <span class="row-action-btn" data-act="rename" data-path="${node.path}" title="Rename">✎</span>
+      <span class="row-action-btn" data-act="duplicate" data-path="${node.path}" title="Duplicate">⧉</span>
+      <span class="row-action-btn" data-act="download" data-path="${node.path}" title="Download">⤓</span>
+      <span class="row-action-btn" data-act="delete" data-path="${node.path}" title="Delete">✕</span>
+    </div>`;
+  }
+  const fileCount = (node.children || []).length;
+  return `<details class="table-item" open data-folder="${node.path}">
+    <summary>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      ${node.name} <span class="n">${fileCount}</span>
+      <span class="row-action-btn" data-act="newfile-in" data-path="${node.path}" title="New file here">＋</span>
+      <span class="row-action-btn" data-act="delete" data-path="${node.path}" title="Delete folder">✕</span>
+    </summary>
+    <div class="cols">${(node.children || []).map(renderNode).join("")}</div>
+  </details>`;
+}
+function renderFileTree() { document.getElementById("fileTreeRoot").innerHTML = (fileTree.children || []).map(renderNode).join(""); }
+document.getElementById("fileTreeRoot").addEventListener("click", (e) => {
+  const actEl = e.target.closest("[data-act]");
+  if (actEl) {
+    e.preventDefault(); e.stopPropagation();
+    const act = actEl.dataset.act, path = actEl.dataset.path;
+    if (act === "delete") {
+      if (!confirm(`Delete "${path}"? This can't be undone.`)) return;
+      const parent = findParent(path);
+      if (parent) parent.children = parent.children.filter((c) => c.path !== path);
+      if (activeFilePath === path || activeFilePath.startsWith(path + "/")) {
+        const firstFile = (fileTree.children || []).find((c) => c.type === "file");
+        if (firstFile) openFile(firstFile.path);
+      }
+      renderFileTree();
+    } else if (act === "rename") {
+      const node = findNode(path);
+      const name = prompt("Rename to:", node.name);
+      if (!name || name === node.name) return;
+      const parent = findParent(path);
+      const newPath = (parent.path ? parent.path + "/" : "") + name;
+      if (findNode(newPath)) { alert("A file with that name already exists here."); return; }
+      renamePath(node, newPath, name);
+      if (activeFilePath === path) { activeFilePath = newPath; document.getElementById("activeFileLabel").textContent = newPath; statusFile.textContent = newPath; }
+      renderFileTree();
+    } else if (act === "duplicate") {
+      const node = findNode(path);
+      const parent = findParent(path);
+      const newPath = uniquePath(parent.path, node.name);
+      parent.children.push({ type: "file", name: newPath.split("/").pop(), path: newPath, content: node.content });
+      renderFileTree();
+    } else if (act === "download") {
+      const node = findNode(path);
+      const blob = new Blob([node.content], { type: "text/plain" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = node.name;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    } else if (act === "newfile-in") {
+      const name = prompt("New file name:", "new_file.py"); if (!name) return;
+      const parent = findNode(path);
+      const newPath = uniquePath(parent.path, name);
+      parent.children.push({ type: "file", name, path: newPath, content: "" });
+      renderFileTree(); openFile(newPath);
+    }
+    return;
+  }
+  const row = e.target.closest(".file-row");
+  if (row) openFile(row.dataset.path);
+});
+function renamePath(node, newPath, newName) {
+  node.name = newName; node.path = newPath;
+  if (node.children) node.children.forEach((c) => renamePath(c, newPath + "/" + c.name, c.name));
+}
+document.getElementById("btnNewFile").onclick = () => { const name = prompt("New file name:", "new_file.py"); if (!name) return; const p = uniquePath("", name); fileTree.children.push({ type: "file", name, path: p, content: "" }); renderFileTree(); openFile(p); };
+document.getElementById("btnNewFolder").onclick = () => { const name = prompt("New folder name:", "folder"); if (!name) return; const p = uniquePath("", name); fileTree.children.push({ type: "folder", name, path: p, children: [] }); renderFileTree(); };
+const uploadInput = document.getElementById("uploadInput");
+document.getElementById("btnUpload").onclick = () => uploadInput.click();
+uploadInput.onchange = (e) => { importFiles([...e.target.files]); uploadInput.value = ""; };
+
+function importFiles(fileList) {
+  fileList.forEach((f) => {
+    if (/\.zip$/i.test(f.name)) { importZip(f); return; }
+    const reader = new FileReader();
+    if (/\.ipynb$/i.test(f.name)) {
+      reader.onload = () => { try { importIpynb(f.name, String(reader.result)); } catch (err) { alert("Couldn't parse notebook: " + err.message); } };
+    } else {
+      reader.onload = () => { const p = uniquePath("", f.name); fileTree.children.push({ type: "file", name: f.name, path: p, content: String(reader.result) }); renderFileTree(); };
+    }
+    reader.readAsText(f);
+  });
+}
+function importZip(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const buf = new Uint8Array(reader.result);
+      const unzipped = fflate.unzipSync(buf);
+      for (const [path, data] of Object.entries(unzipped)) {
+        if (path.endsWith("/")) continue;
+        const text = new TextDecoder().decode(data);
+        addPathToTree(path, text);
+      }
+      renderFileTree();
+    } catch (err) { alert("Couldn't read zip: " + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function addPathToTree(path, content) {
+  const parts = path.split("/").filter(Boolean);
+  let node = fileTree, cur = "";
+  for (let i = 0; i < parts.length - 1; i++) {
+    cur = cur ? cur + "/" + parts[i] : parts[i];
+    let folder = node.children.find((c) => c.path === cur && c.type === "folder");
+    if (!folder) { folder = { type: "folder", name: parts[i], path: cur, children: [] }; node.children.push(folder); }
+    node = folder;
+  }
+  const finalPath = cur ? cur + "/" + parts[parts.length - 1] : parts[parts.length - 1];
+  node.children.push({ type: "file", name: parts[parts.length - 1], path: finalPath, content });
+}
+function importIpynb(filename, text) {
+  const nb = JSON.parse(text);
+  const cells = nb.cells || [];
+  let out = [];
+  cells.forEach((cell, i) => {
+    const src = Array.isArray(cell.source) ? cell.source.join("") : (cell.source || "");
+    if (cell.cell_type === "code") out.push(`# %% cell ${i + 1}\n${src}`);
+    else if (cell.cell_type === "markdown") out.push(`# %% markdown cell ${i + 1}\n${src.split("\n").map((l) => "# " + l).join("\n")}`);
+  });
+  const name = filename.replace(/\.ipynb$/i, "") + "_imported.py";
+  const p = uniquePath("", name);
+  fileTree.children.push({ type: "file", name: p.split("/").pop(), path: p, content: out.join("\n\n") + "\n" });
+  renderFileTree(); openFile(p);
+}
+function downloadZip() {
+  saveActiveFileFromEditor();
+  const files = flattenFiles();
+  const zipInput = {};
+  for (const [path, content] of Object.entries(files)) zipInput[path] = fflate.strToU8(content);
+  const zipped = fflate.zipSync(zipInput, { level: 6 });
+  const blob = new Blob([zipped], { type: "application/zip" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "project.zip";
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+}
+
+renderFileTree();
+openFile("main.py");
+
+const sidebarEl = document.getElementById("fileSidebar");
+const backdropEl = document.getElementById("sidebarBackdrop");
+function closeSidebar() { sidebarEl.classList.remove("open"); backdropEl.classList.remove("open"); }
+document.getElementById("menuToggle").onclick = () => { sidebarEl.classList.toggle("open"); backdropEl.classList.toggle("open"); };
+backdropEl.onclick = closeSidebar;
+
+/* =================================================================
+   PREVIEW (CSV / JSON) -> Output tab
+================================================================= */
+function csvToTable(text) {
+  const rows = text.trim().split(/\r?\n/).map((r) => r.split(","));
+  if (!rows.length) return "<p>Empty file.</p>";
+  const [head, ...body] = rows;
+  return `<table class="grid"><thead><tr>${head.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>
+    <tbody>${body.slice(0, 500).map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function showPreview(path) {
+  const node = findNode(path);
+  if (!node) return;
+  outputEmpty.style.display = "none";
+  if (/\.csv$/i.test(path)) outputView.innerHTML = `<div class="console-html-block">${csvToTable(node.content)}</div>`;
+  else if (/\.json$/i.test(path)) {
+    let pretty;
+    try { pretty = JSON.stringify(JSON.parse(node.content), null, 2); } catch (e) { pretty = node.content + "\n\n(Invalid JSON — showing raw text)"; }
+    outputView.innerHTML = `<pre>${escapeHtml(pretty)}</pre>`;
+  }
+  document.querySelector('.pill-tab[data-tab="output"]').click();
+}
+
+/* =================================================================
+   OUTPUT TABS
+================================================================= */
+const terminalView = document.getElementById("terminalView");
+const problemsView = document.getElementById("problemsView");
+const outputView = document.getElementById("outputView");
+const variablesView = document.getElementById("variablesView");
+const terminalEmpty = document.getElementById("terminalEmpty");
+const problemsEmpty = document.getElementById("problemsEmpty");
+const outputEmpty = document.getElementById("outputEmpty");
+const variablesEmpty = document.getElementById("variablesEmpty");
+const problemsTab = document.getElementById("problemsTab");
+
+document.querySelectorAll(".pill-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".pill-tab").forEach((t2) => t2.classList.remove("active"));
+    tab.classList.add("active");
+    const which = tab.dataset.tab;
+    terminalView.style.display = which === "terminal" ? "block" : "none";
+    problemsView.style.display = which === "problems" ? "block" : "none";
+    outputView.style.display = which === "output" ? "block" : "none";
+    variablesView.style.display = which === "variables" ? "block" : "none";
+  });
+});
+
+function appendTerm(kind, text) {
+  if (text === undefined || text === null || text === "") return;
+  terminalEmpty.style.display = "none";
+  const div = document.createElement("div");
+  div.className = "console-line " + kind;
+  div.textContent = text;
+  terminalView.appendChild(div);
+  terminalView.scrollTop = terminalView.scrollHeight;
+}
+function appendOutputImage(dataUrl) {
+  outputEmpty.style.display = "none";
+  const img = document.createElement("img");
+  img.src = dataUrl;
+  outputView.appendChild(img);
+  outputView.scrollTop = outputView.scrollHeight;
+  document.querySelector('.pill-tab[data-tab="output"]').click();
+}
+function appendOutputHtml(html) {
+  outputEmpty.style.display = "none";
+  const div = document.createElement("div");
+  div.className = "console-html-block";
+  div.innerHTML = html;
+  outputView.appendChild(div);
+  outputView.scrollTop = outputView.scrollHeight;
+  document.querySelector('.pill-tab[data-tab="output"]').click();
+}
+function appendProblem(text) {
+  problemsEmpty.style.display = "none";
+  const div = document.createElement("div");
+  div.className = "error-box"; div.style.margin = "0 0 10px";
+  div.textContent = text;
+  problemsView.appendChild(div);
+  problemsView.scrollTop = problemsView.scrollHeight;
+  problemsTab.classList.add("has-error");
+}
+function renderVariables(varsObj) {
+  variablesEmpty.style.display = "none";
+  const entries = Object.entries(varsObj || {});
+  if (!entries.length) { variablesView.innerHTML = ""; variablesEmpty.style.display = "flex"; return; }
+  variablesView.innerHTML = `<table class="var-table">${entries.map(([k, v]) => {
+    const type = typeof v === "object" && v ? v.type : "";
+    const val = typeof v === "object" && v ? v.value : v;
+    return `<tr><td class="vname">${escapeHtml(k)}</td><td class="vtype">${escapeHtml(type)}</td><td class="vval">${escapeHtml(val)}</td></tr>`;
+  }).join("")}</table>`;
+}
+function renderCallStack(frames) {
+  if (!frames || !frames.length) return "";
+  return `<p class="section-label">Call stack</p><ul class="stack-list">${frames.map((f) => `<li>${escapeHtml(f)}</li>`).join("")}</ul>`;
+}
+
+document.getElementById("btnClear").onclick = () => {
+  terminalView.querySelectorAll(".console-line").forEach((n) => n.remove());
+  problemsView.querySelectorAll(".error-box").forEach((n) => n.remove());
+  outputView.querySelectorAll(".console-html-block, img, pre").forEach((n) => n.remove());
+  terminalEmpty.style.display = "flex"; problemsEmpty.style.display = "flex"; outputEmpty.style.display = "flex";
+  problemsTab.classList.remove("has-error");
+  clearDiagnostics();
+};
+
+function clearDiagnostics() { currentDiagnostics = []; forceLinting(view); }
+function highlightErrorFromMessage(message) {
+  const matches = [...message.matchAll(/line (\d+)/g)];
+  if (!matches.length) return;
+  const lineNo = parseInt(matches[matches.length - 1][1], 10);
+  const total = view.state.doc.lines;
+  if (lineNo < 1 || lineNo > total) return;
+  const line = view.state.doc.line(lineNo);
+  const summary = message.trim().split("\n").pop();
+  currentDiagnostics = [{ from: line.from, to: line.to, severity: "error", message: summary }];
+  forceLinting(view);
+  view.dispatch({ effects: EditorView.scrollIntoView(line.from, { y: "center" }) });
+}
+function formatTraceback(message) {
+  const lines = message.trim().split("\n");
+  const summary = lines[lines.length - 1];
+  const body = message.replace(/<exec>/g, activeFilePath);
+  return `❌ ${summary}\n\n${body}`;
+}
+
+/* =================================================================
+   PYODIDE WORKER
+================================================================= */
+const PYODIDE_VERSION = "v0.29.0";
+const workerSource = `
+importScripts("https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/pyodide.js");
+let pyodide = null;
+let ready = (async () => {
+  pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/" });
+  pyodide.setStdout({ batched: (s) => postMessage({ type: "stdout", text: s }) });
+  pyodide.setStderr({ batched: (s) => postMessage({ type: "stderr", text: s }) });
+  pyodide.runPython("import sys\\nif '/' not in sys.path: sys.path.insert(0, '/')");
+  postMessage({ type: "ready", version: pyodide.runPython("import sys; sys.version") });
+})().catch((err) => postMessage({ type: "boot-error", message: String(err) }));
+
+function writeFiles(files) {
+  for (const path of Object.keys(files)) {
+    const parts = path.split("/");
+    if (parts.length > 1) { const dir = "/" + parts.slice(0, -1).join("/"); try { pyodide.FS.mkdirTree(dir); } catch (e) {} }
+    try { pyodide.FS.writeFile("/" + path, files[path]); } catch (e) {}
+  }
+}
+function clearUserModules(files) {
+  const modNames = Object.keys(files).filter((p) => p.endsWith(".py") && !p.includes("/")).map((p) => p.slice(0, -3));
+  if (!modNames.length) return;
+  const py = "import sys\\n" + modNames.map((m) => \`sys.modules.pop("\${m}", None)\`).join("\\n");
+  try { pyodide.runPython(py); } catch (e) {}
+}
+function setInputQueue(values) {
+  pyodide.globals.set("__input_queue__", values || []);
+  pyodide.runPython(\`
+import builtins as _b_internal
+_queue_internal = list(__input_queue__.to_py()) if hasattr(__input_queue__, "to_py") else list(__input_queue__)
+_qi_internal = {"i": 0}
+def _input_override(prompt=""):
+    if prompt:
+        print(prompt, end="")
+    if _qi_internal["i"] < len(_queue_internal):
+        _val = _queue_internal[_qi_internal["i"]]
+        _qi_internal["i"] += 1
+    else:
+        _val = ""
+    print(_val)
+    return _val
+_b_internal.input = _input_override
+\`);
+}
+async function maybePatchMatplotlib(code) {
+  if (!/matplotlib|pyplot/.test(code)) return;
+  try {
+    await pyodide.loadPackage("matplotlib");
+    pyodide.runPython(\`
+try:
+    import matplotlib
+    matplotlib.use("AGG")
+    import matplotlib.pyplot as _plt_internal
+    import io as _io_internal, base64 as _b64_internal
+    from pyodide.ffi import to_js as _to_js_internal
+    import js as _js_internal
+    def _patched_show(*a, **k):
+        for _num in _plt_internal.get_fignums():
+            _fig = _plt_internal.figure(_num)
+            _buf = _io_internal.BytesIO()
+            _fig.savefig(_buf, format="png", bbox_inches="tight", dpi=110)
+            _buf.seek(0)
+            _data = _b64_internal.b64encode(_buf.read()).decode("ascii")
+            _js_internal.postMessage(_to_js_internal({"type": "image", "dataUrl": "data:image/png;base64," + _data}, dict_converter=_js_internal.Object.fromEntries))
+        _plt_internal.close("all")
+    _plt_internal.show = _patched_show
+except Exception:
+    pass
+\`);
+  } catch (e) {}
+}
+function snapshotVariables() {
+  try {
+    return pyodide.runPython(\`
+import json as _json_vars, types as _types_vars
+def _snapshot_vars():
+    out = {}
+    for k, v in list(globals().items()):
+        if k.startswith("_"):
+            continue
+        if isinstance(v, _types_vars.ModuleType) or callable(v):
+            continue
+        try:
+            r = repr(v)
+        except Exception:
+            r = "<unrepresentable>"
+        if len(r) > 200:
+            r = r[:200] + "…"
+        out[k] = {"value": r, "type": type(v).__name__}
+    return _json_vars.dumps(out)
+_snapshot_vars()
+\`);
+  } catch (e) { return "{}"; }
+}
+
+const TRACER_SETUP = \`
+import sys, json as _json_dbg
+
+def _dbg_safe_repr(v):
+    try:
+        r = repr(v)
+    except Exception:
+        r = "<unrepresentable>"
+    if len(r) > 200:
+        r = r[:200] + "…"
+    return r
+
+def _dbg_run(code, filename, project_files):
+    events = []
+    MAX_EVENTS = 4000
+    project_set = set(project_files)
+
+    def tracer(frame, event, arg):
+        if len(events) >= MAX_EVENTS:
+            return None
+        fn = frame.f_code.co_filename
+        if fn not in project_set:
+            return tracer
+        if event in ("line", "call", "return"):
+            depth = 0
+            f = frame
+            while f is not None:
+                depth += 1
+                f = f.f_back
+            variables = {}
+            if event in ("line", "return"):
+                for k, v in frame.f_locals.items():
+                    if k.startswith("__"):
+                        continue
+                    variables[k] = {"value": _dbg_safe_repr(v), "type": type(v).__name__}
+            events.append({"event": event, "file": fn, "line": frame.f_lineno, "func": frame.f_code.co_name, "depth": depth, "vars": variables})
+        return tracer
+
+    import __main__
+    g = __main__.__dict__
+    err = None
+    sys.settrace(tracer)
+    try:
+        exec(compile(code, filename, "exec"), g)
+    except SystemExit:
+        pass
+    except BaseException:
+        import traceback
+        err = traceback.format_exc()
+    finally:
+        sys.settrace(None)
+    return _json_dbg.dumps({"events": events, "error": err, "truncated": len(events) >= MAX_EVENTS})
+\`;
+
+self.onmessage = async (e) => {
+  const msg = e.data;
+  if (msg.type === "install") {
+    try {
+      await pyodide.loadPackage(msg.name);
+      postMessage({ type: "package-status", name: msg.name, status: "installed" });
+    } catch (e1) {
+      try {
+        await pyodide.loadPackage("micropip");
+        const micropip = pyodide.pyimport("micropip");
+        await micropip.install(msg.name);
+        postMessage({ type: "package-status", name: msg.name, status: "installed" });
+      } catch (e2) {
+        postMessage({ type: "package-status", name: msg.name, status: "failed", error: String(e2) });
+      }
+    }
+    return;
+  }
+  if (msg.type === "restart") { postMessage({ type: "restarted" }); return; }
+  if (msg.type !== "run" && msg.type !== "debug") return;
+  try {
+    await ready;
+    writeFiles(msg.files);
+    clearUserModules(msg.files);
+    setInputQueue(msg.inputValues);
+    try { await pyodide.loadPackagesFromImports(msg.code); } catch (impErr) {}
+    await maybePatchMatplotlib(msg.code);
+
+    if (msg.type === "run") {
+      const result = await pyodide.runPythonAsync(msg.code);
+      let resultText = null, resultHtml = null;
+      if (result !== undefined && result !== null) {
+        if (typeof result === "object" && typeof result._repr_html_ === "function") {
+          try { resultHtml = result._repr_html_(); } catch (e) {}
+        }
+        try { resultText = String(result); } catch (e) { resultText = null; }
+        if (result && typeof result.destroy === "function") { try { result.destroy(); } catch (e) {} }
+      }
+      const variables = snapshotVariables();
+      postMessage({ type: "done", result: resultText, resultHtml, variables });
+    } else {
+      pyodide.runPython(TRACER_SETUP);
+      pyodide.globals.set("__dbg_code__", msg.code);
+      pyodide.globals.set("__dbg_filename__", "/" + msg.activePath);
+      pyodide.globals.set("__dbg_files__", Object.keys(msg.files).map((p) => "/" + p));
+      const raw = pyodide.runPython("_dbg_run(__dbg_code__, __dbg_filename__, __dbg_files__.to_py())");
+      const parsed = JSON.parse(raw);
+      const variables = snapshotVariables();
+      postMessage({ type: "debug-done", events: parsed.events, error: parsed.error, truncated: parsed.truncated, variables });
+    }
+  } catch (err) {
+    postMessage({ type: "error", message: (err && err.message) ? err.message : String(err) });
+  }
+};
+`;
+
+let worker = null, runtimeReady = false, isRunning = false, runStartTime = 0;
+const btnRun = document.getElementById("btnRun"), btnStop = document.getElementById("btnStop"), btnDebug = document.getElementById("btnDebug");
+const bootScreen = document.getElementById("bootScreen");
+const statusRuntime = document.getElementById("statusRuntime");
+function setRuntimeStatus(kind, label) { statusRuntime.className = "status " + kind; statusRuntime.innerHTML = `<span class="status-dot"></span>${label}`; }
+
+function spawnWorker() {
+  const blob = new Blob([workerSource], { type: "application/javascript" });
+  worker = new Worker(URL.createObjectURL(blob));
+  worker.onmessage = onWorkerMessage;
+  worker.onerror = (e) => { appendTerm("sys", "Worker error: " + e.message); setRuntimeStatus("err", "Runtime error"); };
+}
+
+function onWorkerMessage(e) {
+  const msg = e.data;
+  switch (msg.type) {
+    case "ready":
+      runtimeReady = true; btnRun.disabled = false; btnDebug.disabled = false; setRuntimeStatus("ok", "Python ready");
+      bootScreen.classList.add("hidden"); setTimeout(() => (bootScreen.style.display = "none"), 300);
+      document.getElementById("setPyVersion").textContent = (msg.version || "Pyodide " + PYODIDE_VERSION).split("\n")[0];
+      break;
+    case "boot-error":
+      setRuntimeStatus("err", "Failed to load runtime");
+      appendTerm("stderr", "Failed to load Pyodide: " + msg.message);
+      bootScreen.classList.add("hidden");
+      break;
+    case "stdout": appendTerm("stdout", msg.text); break;
+    case "stderr": appendTerm("stderr", msg.text); break;
+    case "image": appendOutputImage(msg.dataUrl); break;
+    case "done": {
+      isRunning = false; updateRunButtons();
+      const elapsed = Math.round(performance.now() - runStartTime);
+      if (msg.resultHtml) appendOutputHtml(msg.resultHtml);
+      else if (msg.result !== null && msg.result !== undefined) appendTerm("result", "=> " + msg.result);
+      appendTerm("sys ok", `— finished in ${elapsed}ms · exit 0 —`);
+      setRuntimeStatus("ok", "Python ready");
+      try { renderVariables(JSON.parse(msg.variables)); } catch (e) {}
+      break;
+    }
+    case "error": {
+      isRunning = false; updateRunButtons();
+      const elapsed = Math.round(performance.now() - runStartTime);
+      const formatted = formatTraceback(msg.message);
+      appendTerm("stderr", formatted);
+      appendProblem(formatted);
+      highlightErrorFromMessage(msg.message);
+      appendTerm("sys fail", `— failed in ${elapsed}ms · exit 1 —`);
+      setRuntimeStatus("err", "Error");
+      document.querySelector('.pill-tab[data-tab="problems"]').click();
+      break;
+    }
+    case "debug-done": {
+      isRunning = false; updateRunButtons();
+      onDebugTraceReady(msg.events, msg.error, msg.truncated);
+      try { renderVariables(JSON.parse(msg.variables)); } catch (e) {}
+      setRuntimeStatus("ok", "Python ready");
+      break;
+    }
+    case "package-status": updatePackageRowStatus(msg.name, msg.status); break;
+    case "restarted": break;
+  }
+}
+function updateRunButtons() { btnRun.disabled = isRunning || !runtimeReady || debugging; btnDebug.disabled = isRunning || !runtimeReady || debugging; btnStop.disabled = !isRunning; }
+
+function doRun(inputValues) {
+  saveActiveFileFromEditor();
+  const code = view.state.doc.toString();
+  if (!code.trim()) return;
+  clearDiagnostics();
+  if (settings.clearOnRun) document.getElementById("btnClear").click();
+  isRunning = true; updateRunButtons();
+  setRuntimeStatus("busy", "Running…");
+  appendTerm("sys", "$ python " + activeFilePath);
+  runStartTime = performance.now();
+  worker.postMessage({ type: "run", code, files: flattenFiles(), inputValues: inputValues || [] });
+}
+function doDebug(inputValues) {
+  saveActiveFileFromEditor();
+  const code = view.state.doc.toString();
+  if (!code.trim()) return;
+  clearDiagnostics();
+  isRunning = true; updateRunButtons();
+  setRuntimeStatus("busy", "Recording debug trace…");
+  appendTerm("sys", "$ python -d " + activeFilePath);
+  runStartTime = performance.now();
+  worker.postMessage({ type: "debug", code, files: flattenFiles(), activePath: activeFilePath, inputValues: inputValues || [] });
+}
+
+function scanInputsThen(cb) {
+  saveActiveFileFromEditor();
+  const code = view.state.doc.toString();
+  const matches = [...code.matchAll(/\binput\s*\(/g)];
+  if (matches.length === 0) { cb([]); return; }
+  openInputModal(code, matches.length, cb);
+}
+function runCode() { if (!runtimeReady || isRunning || debugging) return; scanInputsThen(doRun); }
+function debugCode() { if (!runtimeReady || isRunning || debugging) return; scanInputsThen(doDebug); }
+btnRun.onclick = runCode;
+btnDebug.onclick = debugCode;
+
+function restartRuntime(reason) {
+  if (worker) worker.terminate();
+  appendTerm("sys", reason || "— restarting runtime —");
+  isRunning = false; runtimeReady = false;
+  debugging = false; debugTrace = []; debugIndex = -1;
+  debugBar.classList.remove("on"); fileDot.classList.remove("debugging");
+  view.dispatch({ effects: setDebugLine.of(null) });
+  updateRunButtons();
+  setRuntimeStatus("busy", "Restarting runtime…");
+  bootScreen.style.display = "flex"; bootScreen.classList.remove("hidden");
+  spawnWorker();
+}
+btnStop.onclick = () => { if (!isRunning) return; restartRuntime("— stopped by user, restarting runtime —"); };
+spawnWorker();
+
+document.addEventListener("keydown", (e) => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key === "Enter") { e.preventDefault(); runCode(); }
+  else if (mod && (e.key === "s" || e.key === "S")) { e.preventDefault(); saveFile(); }
+});
+
+/* =================================================================
+   PROGRAM INPUT MODAL
+================================================================= */
+const inputModal = document.getElementById("inputModal");
+const inputFieldsHost = document.getElementById("inputFieldsHost");
+let pendingInputCallback = null;
+function openInputModal(code, count, cb) {
+  pendingInputCallback = cb;
+  const literalRe = /input\s*\(\s*(["'])((?:\\.|(?!\1).)*)\1/g;
+  const labels = [];
+  let m; while ((m = literalRe.exec(code)) && labels.length < count) labels.push(m[2]);
+  inputFieldsHost.innerHTML = "";
+  for (let i = 0; i < count; i++) {
+    const label = labels[i] || `Input #${i + 1}`;
+    const div = document.createElement("div");
+    div.className = "input-field";
+    div.innerHTML = `<label>${escapeHtml(label)}</label><input class="input-mono" data-idx="${i}">`;
+    inputFieldsHost.appendChild(div);
+  }
+  inputModal.classList.add("open");
+  const first = inputFieldsHost.querySelector("input"); if (first) first.focus();
+}
+document.getElementById("inputModalCancel").onclick = () => inputModal.classList.remove("open");
+document.getElementById("inputModalClose").onclick = () => inputModal.classList.remove("open");
+document.getElementById("inputModalRun").onclick = () => {
+  const values = [...inputFieldsHost.querySelectorAll("input")].map((inp) => inp.value);
+  inputModal.classList.remove("open");
+  if (pendingInputCallback) pendingInputCallback(values);
+};
+
+/* =================================================================
+   DEBUGGER (trace-replay: the whole script runs once with sys.settrace
+   recording every line; Step/Continue then navigate that recording.
+   This avoids needing to truly pause a running WASM interpreter.)
+================================================================= */
+let debugTrace = [], debugIndex = -1, debugging = false, debugError = null;
+const debugBar = document.getElementById("debugBar");
+const dbgPos = document.getElementById("dbgPos");
+const fileDot = document.getElementById("fileDot");
+
+function onDebugTraceReady(events, error, truncated) {
+  debugTrace = events || [];
+  debugError = error;
+  debugIndex = debugTrace.length ? 0 : -1;
+  debugging = debugTrace.length > 0 || !!error;
+  debugBar.classList.toggle("on", debugging);
+  fileDot.classList.toggle("debugging", debugging);
+  updateRunButtons();
+  if (truncated) appendTerm("sys", "(trace capped at 4000 steps — long loops are only partially recorded)");
+  if (!debugTrace.length && error) {
+    appendTerm("sys fail", "— debug run failed before any traced line —");
+    const formatted = formatTraceback(error);
+    appendTerm("stderr", formatted); appendProblem(formatted);
+    document.querySelector('.pill-tab[data-tab="problems"]').click();
+    return;
+  }
+  appendTerm("sys ok", `— debug trace recorded: ${debugTrace.length} steps${error ? " (stopped on exception)" : ""} —`);
+  showDebugStep();
+}
+function pathForEventFile(f) { return f.replace(/^\//, ""); }
+function showDebugStep() {
+  if (debugIndex < 0 || debugIndex >= debugTrace.length) {
+    dbgPos.textContent = `step ${debugTrace.length} / ${debugTrace.length} · finished`;
+    if (debugError) {
+      const formatted = formatTraceback(debugError);
+      appendTerm("stderr", formatted); appendProblem(formatted);
+      document.querySelector('.pill-tab[data-tab="problems"]').click();
+    }
+    view.dispatch({ effects: setDebugLine.of(null) });
+    return;
+  }
+  const ev = debugTrace[debugIndex];
+  dbgPos.textContent = `step ${debugIndex + 1} / ${debugTrace.length} · ${ev.func}() line ${ev.line}`;
+  const path = pathForEventFile(ev.file);
+  if (path !== activeFilePath && findNode(path)) openFile(path);
+  if (ev.line >= 1 && ev.line <= view.state.doc.lines) {
+    const line = view.state.doc.line(ev.line);
+    view.dispatch({ effects: setDebugLine.of(line.from), selection: { anchor: line.from } });
+    view.dispatch({ effects: EditorView.scrollIntoView(line.from, { y: "center" }) });
+  }
+  renderVariables(ev.vars);
+  const stackFrames = [];
+  let depth = ev.depth;
+  for (let i = debugIndex; i >= 0 && stackFrames.length < 20; i--) {
+    if (debugTrace[i].depth <= depth) { stackFrames.push(`${debugTrace[i].func}()  — line ${debugTrace[i].line}`); depth = debugTrace[i].depth - 1; }
+    if (depth <= 0) break;
+  }
+  variablesView.insertAdjacentHTML("beforeend", renderCallStack(stackFrames));
+}
+document.getElementById("dbgStepInto").onclick = () => { if (debugIndex < debugTrace.length - 1) debugIndex++; else debugIndex = debugTrace.length; showDebugStep(); };
+document.getElementById("dbgStepOver").onclick = () => {
+  const cur = debugTrace[debugIndex]; if (!cur) return;
+  let i = debugIndex + 1;
+  while (i < debugTrace.length && debugTrace[i].depth > cur.depth) i++;
+  debugIndex = i < debugTrace.length ? i : debugTrace.length;
+  showDebugStep();
+};
+document.getElementById("dbgStepOut").onclick = () => {
+  const cur = debugTrace[debugIndex]; if (!cur) return;
+  let i = debugIndex + 1;
+  while (i < debugTrace.length && debugTrace[i].depth >= cur.depth) i++;
+  debugIndex = i < debugTrace.length ? i : debugTrace.length;
+  showDebugStep();
+};
+document.getElementById("dbgContinue").onclick = () => {
+  let i = debugIndex + 1;
+  while (i < debugTrace.length) {
+    const ev = debugTrace[i];
+    const set = bpSetFor(pathForEventFile(ev.file));
+    if (set.has(ev.line)) break;
+    i++;
+  }
+  debugIndex = i < debugTrace.length ? i : debugTrace.length;
+  showDebugStep();
+};
+document.getElementById("dbgStop").onclick = () => {
+  debugging = false; debugTrace = []; debugIndex = -1;
+  debugBar.classList.remove("on"); fileDot.classList.remove("debugging");
+  view.dispatch({ effects: setDebugLine.of(null) });
+  updateRunButtons();
+};
+
+/* =================================================================
+   PACKAGES MODAL
+================================================================= */
+const CURATED_PACKAGES = ["numpy","pandas","matplotlib","scipy","scikit-learn","sympy","networkx","pillow","regex","toolz","attrs","python-dateutil","pytz","seaborn","statsmodels"];
+const packageStatus = {};
+const packagesModal = document.getElementById("packagesModal");
+const pkgList = document.getElementById("pkgList");
+function renderPackages(filter = "") {
+  const items = CURATED_PACKAGES.filter((p) => p.toLowerCase().includes(filter.toLowerCase()));
+  pkgList.innerHTML = items.map((name) => {
+    const st = packageStatus[name];
+    let right;
+    if (st === "installed") right = `<span class="pkg-status">✓ Installed</span>`;
+    else if (st === "installing") right = `<span class="pkg-status">Installing…</span>`;
+    else if (st === "failed") right = `<span class="pkg-status failed">Failed</span> <button class="ghost pkg-install" data-name="${name}">Retry</button>`;
+    else right = `<button class="ghost pkg-install" data-name="${name}">Install</button>`;
+    return `<div class="pkg-row"><span class="pkg-name">${name}</span>${right}</div>`;
+  }).join("");
+}
+function updatePackageRowStatus(name, status) { packageStatus[name] = status; renderPackages(document.getElementById("pkgSearch").value); }
+pkgList.addEventListener("click", (e) => {
+  const btn = e.target.closest(".pkg-install"); if (!btn) return;
+  const name = btn.dataset.name;
+  packageStatus[name] = "installing"; renderPackages(document.getElementById("pkgSearch").value);
+  worker.postMessage({ type: "install", name });
+});
+document.getElementById("pkgSearch").oninput = (e) => renderPackages(e.target.value);
+function openPackages() { renderPackages(); packagesModal.classList.add("open"); }
+document.getElementById("btnPackages").onclick = openPackages;
+document.getElementById("packagesClose").onclick = () => packagesModal.classList.remove("open");
+document.getElementById("packagesDone").onclick = () => packagesModal.classList.remove("open");
+
+/* =================================================================
+   SAVE SYSTEM (localStorage) + FILE MENU ACTIONS
+================================================================= */
+const STORAGE_KEY = "python-ide-project-v1";
+function saveProjectToStorage(silent) {
+  saveActiveFileFromEditor();
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ tree: fileTree, active: activeFilePath, savedAt: Date.now() }));
+    if (!silent) { statusFile.textContent = "Project saved"; setTimeout(() => (statusFile.textContent = activeFilePath), 1200); }
+    return true;
+  } catch (e) {
+    if (!silent) alert("Couldn't save to this browser's storage (it may be unavailable in this preview). Try downloading a .py/.zip instead, or open this file outside the chat preview.");
+    return false;
+  }
+}
+function loadProjectFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data.tree) return false;
+    fileTree = data.tree; activeFilePath = data.active && findNode(data.active, fileTree) ? data.active : "main.py";
+    renderFileTree(); openFile(activeFilePath);
+    return true;
+  } catch (e) { return false; }
+}
+(function maybeRestore() {
+  try {
+    if (localStorage.getItem(STORAGE_KEY) && confirm("A previously saved project was found in this browser. Restore it?")) loadProjectFromStorage();
+  } catch (e) {}
+})();
+let autoSaveTimer = null;
+function applyAutoSave(on) {
+  document.getElementById("setAutoSave").checked = on;
+  if (autoSaveTimer) clearInterval(autoSaveTimer);
+  if (on) autoSaveTimer = setInterval(() => saveProjectToStorage(true), 20000);
+}
+
+function saveFile() {
+  saveActiveFileFromEditor();
+  const node = findNode(activeFilePath);
+  const blob = new Blob([node.content], { type: "text/plain" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = node.name;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+  const original = statusFile.textContent;
+  statusFile.textContent = "Saved " + node.name;
+  setTimeout(() => (statusFile.textContent = original), 1500);
+}
+document.getElementById("btnSave").onclick = saveFile;
+
+/* =================================================================
+   MENU BAR
+================================================================= */
+const menuDefs = {
+  file: [
+    { label: "New File", action: () => document.getElementById("btnNewFile").click() },
+    { label: "New Folder", action: () => document.getElementById("btnNewFolder").click() },
+    { label: "Upload Files…", action: () => uploadInput.click() },
+    { divider: true },
+    { label: "Save Active File", action: saveFile, sc: "Ctrl+S" },
+    { label: "💾 Save Project (browser storage)", action: () => saveProjectToStorage(false) },
+    { label: "⬇ Download ZIP", action: downloadZip },
+    { divider: true },
+    { label: "Import .zip / .ipynb / .py…", action: () => uploadInput.click() },
+    { label: "Export as .ipynb", action: exportActiveAsIpynb },
+  ],
+  edit: [
+    { label: "Undo", action: () => undo(view), sc: "Ctrl+Z" },
+    { label: "Redo", action: () => redo(view), sc: "Ctrl+Y" },
+    { divider: true },
+    { label: "Find", action: () => openSearchPanel(view), sc: "Ctrl+F" },
+    { label: "Find & Replace", action: () => openSearchPanel(view), sc: "Ctrl+H" },
+    { divider: true },
+    { label: "Select All", action: () => view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } }) },
+  ],
+  view: [
+    { label: "Toggle Theme", action: toggleTheme },
+    { label: "Toggle Word Wrap", action: toggleWrap },
+    { label: "Toggle Minimap", action: () => setMinimap(!document.getElementById("minimapHost").classList.contains("on")) },
+    { label: "Toggle File Explorer", action: () => document.getElementById("menuToggle").click() },
+    { label: "Increase Font Size", action: increaseFont },
+    { label: "Decrease Font Size", action: decreaseFont },
+  ],
+  run: [
+    { label: "Run", action: runCode, sc: "Ctrl+Enter" },
+    { label: "Debug", action: debugCode },
+    { label: "Stop", action: () => btnStop.click() },
+    { label: "Clear Terminal", action: () => document.getElementById("btnClear").click() },
+  ],
+  terminal: [
+    { label: "Clear Terminal", action: () => document.getElementById("btnClear").click() },
+    { label: "Toggle Clear-on-Run", action: () => { settings.clearOnRun = !settings.clearOnRun; document.getElementById("setClearOnRun").checked = settings.clearOnRun; } },
+  ],
+  help: [
+    { label: "Keyboard Shortcuts", action: () => document.getElementById("shortcutsModal").classList.add("open") },
+    { label: "Security Notes", action: () => document.getElementById("settingsModal").classList.add("open") },
+  ],
+};
+function exportActiveAsIpynb() {
+  saveActiveFileFromEditor();
+  const node = findNode(activeFilePath);
+  const nb = { cells: [{ cell_type: "code", metadata: {}, execution_count: null, outputs: [], source: node.content.split("\n").map((l, i, arr) => i < arr.length - 1 ? l + "\n" : l) }], metadata: { kernelspec: { name: "python3", display_name: "Python 3" } }, nbformat: 4, nbformat_minor: 5 };
+  const blob = new Blob([JSON.stringify(nb, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = node.name.replace(/\.py$/, "") + ".ipynb";
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+}
+
+const menubar = document.getElementById("menubar");
+const menuDropdown = document.getElementById("menuDropdown");
+let openMenuKey = null;
+function closeMenu() { openMenuKey = null; menuDropdown.classList.remove("open"); document.querySelectorAll(".menu-item.open").forEach((b) => b.classList.remove("open")); }
+function openMenu(key, btn) {
+  openMenuKey = key;
+  document.querySelectorAll(".menu-item.open").forEach((b) => b.classList.remove("open"));
+  btn.classList.add("open");
+  menuDropdown.innerHTML = menuDefs[key].map((item) => item.divider ? `<div class="menu-divider"></div>` : `<button data-label="${item.label}">${item.label}${item.sc ? `<span class="sc">${item.sc}</span>` : ""}</button>`).join("");
+  const rect = btn.getBoundingClientRect();
+  menuDropdown.style.left = rect.left + "px";
+  menuDropdown.style.top = rect.bottom + 4 + "px";
+  menuDropdown.classList.add("open");
+}
+menubar.addEventListener("click", (e) => {
+  const btn = e.target.closest(".menu-item"); if (!btn) return;
+  const key = btn.dataset.menu;
+  if (openMenuKey === key) { closeMenu(); return; }
+  openMenu(key, btn);
+});
+menuDropdown.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-label]"); if (!btn) return;
+  const item = menuDefs[openMenuKey].find((i) => i.label === btn.dataset.label);
+  closeMenu();
+  if (item && item.action) item.action();
+});
+document.addEventListener("click", (e) => { if (openMenuKey && !e.target.closest(".menu-dropdown") && !e.target.closest(".menu-item")) closeMenu(); });
+
+/* =================================================================
+   SETTINGS
+================================================================= */
+const settings = { clearOnRun: false };
+const settingsModal = document.getElementById("settingsModal");
+document.getElementById("btnSettings").onclick = () => settingsModal.classList.add("open");
+document.getElementById("settingsClose").onclick = () => settingsModal.classList.remove("open");
+document.getElementById("settingsDone").onclick = () => settingsModal.classList.remove("open");
+document.getElementById("setOpenPackages").onclick = openPackages;
+document.getElementById("setRestartRuntime").onclick = () => restartRuntime("— restarting runtime (from Settings) —");
+
+document.getElementById("setTheme").onchange = (e) => setTheme(e.target.value === "dark");
+document.getElementById("setFont").onchange = (e) => setFontFamily(e.target.value);
+document.getElementById("setFontSize").onchange = (e) => { fontSize = parseFloat(e.target.value) || 13.5; applyFontSize(); };
+document.getElementById("setTabSize").onchange = (e) => setTabSize(parseInt(e.target.value, 10));
+document.getElementById("setWordWrap").onchange = (e) => setWrap(e.target.checked);
+document.getElementById("setMinimap").onchange = (e) => setMinimap(e.target.checked);
+document.getElementById("setAutoSave").onchange = (e) => applyAutoSave(e.target.checked);
+document.getElementById("setTermFontSize").onchange = (e) => setTermFontSize(parseFloat(e.target.value) || 12.5);
+document.getElementById("setClearOnRun").onchange = (e) => { settings.clearOnRun = e.target.checked; };
+
+document.getElementById("setFontSize").value = fontSize;
+document.getElementById("setTermFontSize").value = 12.5;
+applyAutoSave(true);
+
+/* =================================================================
+   RESIZE HANDLE
+================================================================= */
+const vResize = document.getElementById("vResize"), outputPane = document.getElementById("outputPane"), ideMain = document.getElementById("ideMain");
+let resizing = false;
+vResize.addEventListener("pointerdown", (e) => { resizing = true; vResize.classList.add("dragging"); document.body.style.cursor = "ew-resize"; e.preventDefault(); });
+window.addEventListener("pointermove", (e) => {
+  if (!resizing) return;
+  const rect = ideMain.getBoundingClientRect();
+  let w = rect.right - e.clientX;
+  w = Math.max(260, Math.min(rect.width * 0.7, w));
+  outputPane.style.flex = `0 0 ${w}px`;
+});
+window.addEventListener("pointerup", () => { if (!resizing) return; resizing = false; vResize.classList.remove("dragging"); document.body.style.cursor = ""; });
+
+/* =================================================================
+   SHORTCUTS MODAL
+================================================================= */
+const shortcutsModal = document.getElementById("shortcutsModal");
+document.getElementById("btnShortcuts").onclick = () => shortcutsModal.classList.add("open");
+document.getElementById("shortcutsClose").onclick = () => shortcutsModal.classList.remove("open");
+document.getElementById("shortcutsGotIt").onclick = () => shortcutsModal.classList.remove("open");
+[shortcutsModal, packagesModal, inputModal, settingsModal].forEach((m) => m.addEventListener("click", (e) => { if (e.target === m) m.classList.remove("open"); }));
+</script>
+</body>
+</html>
