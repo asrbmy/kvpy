@@ -1,0 +1,15 @@
+{
+  "name": "KVPy — Browser Python IDE",
+  "short_name": "KVPy",
+  "description": "A full Python editor, compiler and interpreter that runs entirely in your browser via Pyodide — no server, no installs.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0F1416",
+  "theme_color": "#0F1416",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

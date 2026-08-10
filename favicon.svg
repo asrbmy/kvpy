@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#0F1416"/>
+  <rect x="8" y="8" width="48" height="48" rx="10" fill="#1D262A" stroke="#263237" stroke-width="1.5"/>
+  <path d="M11 20 A 21 21 0 0 1 53 20" fill="none" stroke="#D9A441" stroke-width="2" stroke-linecap="round"/>
+  <text x="32" y="42" font-family="'IBM Plex Mono', ui-monospace, Menlo, monospace" font-weight="700"
+        font-size="25" fill="#D9A441" text-anchor="middle">Py</text>
+  <circle cx="47" cy="47" r="4.6" fill="#4FA69A"/>
+</svg>
