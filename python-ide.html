@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="kvsql-ui-kit.css">
-<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js" integrity="sha384-DT0Ls0mO7JmjTnT+oBuMhEJzYJO1zUqzuuMXNdnOmOQRIpN2BgSjvBV/j50NngIT" crossorigin="anonymous"></script>
 <style>
   :root{ --ide-font: var(--mono); }
   html, body{ height:100%; overflow:hidden; }
@@ -314,7 +314,6 @@
         <tr><td>Find / Replace</td><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>H</kbd></td></tr>
         <tr><td>Undo / Redo</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td></tr>
         <tr><td>Toggle breakpoint</td><td>Click line-number gutter</td></tr>
-        <tr><td>Hover a builtin</td><td>Shows docs</td></tr>
         <tr><td>Type <code>str.</code></td><td>method suggestions</td></tr>
         <tr><td>Type <code>import pan</code></td><td>package suggestions</td></tr>
       </table>
@@ -402,17 +401,17 @@
 <script type="module">
 import {
   EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter,
-  drawSelection, dropCursor, rectangularSelection, crosshairCursor, gutter, GutterMarker, hoverTooltip
-} from "https://esm.sh/@codemirror/view@6";
-import { EditorState, Compartment, StateEffect, StateField, RangeSet } from "https://esm.sh/@codemirror/state@6";
-import { defaultKeymap, history, historyKeymap, indentWithTab, undo, redo } from "https://esm.sh/@codemirror/commands@6";
-import { python } from "https://esm.sh/@codemirror/lang-python@6";
-import { syntaxHighlighting, HighlightStyle, indentOnInput, bracketMatching, foldGutter, foldKeymap, indentUnit } from "https://esm.sh/@codemirror/language@6";
-import { closeBrackets, closeBracketsKeymap, autocompletion, completionKeymap, startCompletion } from "https://esm.sh/@codemirror/autocomplete@6";
-import { searchKeymap, highlightSelectionMatches, openSearchPanel, replaceAll } from "https://esm.sh/@codemirror/search@6";
-import { linter, lintGutter, forceLinting } from "https://esm.sh/@codemirror/lint@6";
-import { Decoration } from "https://esm.sh/@codemirror/view@6";
-import { tags as t } from "https://esm.sh/@lezer/highlight@1";
+  drawSelection, dropCursor, rectangularSelection, crosshairCursor, gutter, GutterMarker
+} from "https://esm.sh/@codemirror/view@6.43.8";
+import { EditorState, Compartment, StateEffect, StateField, RangeSet } from "https://esm.sh/@codemirror/state@6.7.1";
+import { defaultKeymap, history, historyKeymap, indentWithTab, undo, redo } from "https://esm.sh/@codemirror/commands@6.10.4";
+import { python } from "https://esm.sh/@codemirror/lang-python@6.2.1";
+import { syntaxHighlighting, HighlightStyle, indentOnInput, bracketMatching, foldGutter, foldKeymap, indentUnit } from "https://esm.sh/@codemirror/language@6.12.4";
+import { closeBrackets, closeBracketsKeymap, autocompletion, completionKeymap, startCompletion } from "https://esm.sh/@codemirror/autocomplete@6.20.3";
+import { searchKeymap, highlightSelectionMatches, openSearchPanel, replaceAll } from "https://esm.sh/@codemirror/search@6.7.1";
+import { linter, lintGutter, forceLinting } from "https://esm.sh/@codemirror/lint@6.9.7";
+import { Decoration } from "https://esm.sh/@codemirror/view@6.43.8";
+import { tags as t } from "https://esm.sh/@lezer/highlight@1.2.3";
 
 /* =================================================================
    THEME
@@ -517,63 +516,6 @@ function pythonImportCompletions(context) {
   return { from: word ? word.from : context.pos, options, validFor: /^[\w.]*$/ };
 }
 
-const DOCS = {
-  print: "print(*objects, sep=' ', end='\\n')\nWrite objects to stdout, separated by sep, followed by end.",
-  len: "len(obj) -> int\nReturn the number of items in a container.",
-  range: "range(stop) / range(start, stop, step)\nAn immutable sequence of numbers, commonly used for looping.",
-  input: "input(prompt='') -> str\nRead a line from stdin (pre-filled in this browser IDE).",
-  str: "str(object='') -> str\nCreate a new string object; also the string type itself.",
-  int: "int(x=0, base=10) -> int\nConvert a number or string to an integer.",
-  float: "float(x=0.0) -> float\nConvert a string or number to a floating point number.",
-  list: "list(iterable=()) -> list\nBuild a new mutable list.",
-  dict: "dict(**kwargs) -> dict\nCreate a new mutable mapping.",
-  set: "set(iterable=()) -> set\nCreate a new mutable set of unique items.",
-  tuple: "tuple(iterable=()) -> tuple\nCreate a new immutable ordered sequence.",
-  open: "open(file, mode='r') -> file object\nOpen a file and return a file object.",
-  sum: "sum(iterable, start=0)\nAdd the items of an iterable, left to right.",
-  min: "min(iterable, *, key=None)\nReturn the smallest item.",
-  max: "max(iterable, *, key=None)\nReturn the largest item.",
-  sorted: "sorted(iterable, *, key=None, reverse=False) -> list\nReturn a new sorted list.",
-  enumerate: "enumerate(iterable, start=0)\nYield (index, value) pairs.",
-  zip: "zip(*iterables)\nAggregate elements from each iterable into tuples.",
-  map: "map(function, iterable)\nApply function to every item of iterable.",
-  filter: "filter(function, iterable)\nKeep items where function(item) is truthy.",
-  type: "type(object) -> type\nReturn the type of an object.",
-  isinstance: "isinstance(object, classinfo) -> bool\nCheck if object is an instance of classinfo.",
-  def: "def name(params):\n    ...\nDefine a function.",
-  class: "class Name:\n    ...\nDefine a class.",
-  for: "for item in iterable:\n    ...\nLoop over items of an iterable.",
-  while: "while condition:\n    ...\nLoop while condition is true.",
-  if: "if condition:\n    ...\nConditional branch.",
-  import: "import module\nBring a module into scope.",
-  from: "from module import name\nImport specific names from a module.",
-  try: "try:\n    ...\nexcept Error:\n    ...\nHandle exceptions.",
-  lambda: "lambda args: expr\nAn anonymous inline function.",
-  with: "with ctx as name:\n    ...\nRun a block under a context manager.",
-  yield: "yield value\nProduce a value from a generator function.",
-  async: "async def name(...):\n    ...\nDefine a coroutine function.",
-  await: "await coro\nSuspend until an awaitable completes.",
-};
-const docsTooltip = hoverTooltip((view, pos, side) => {
-  const { from, to, text } = view.state.doc.lineAt(pos);
-  let start = pos, end = pos;
-  while (start > from && /\w/.test(text[start - from - 1])) start--;
-  while (end < to && /\w/.test(text[end - from])) end++;
-  if (start === end) return null;
-  const word = text.slice(start - from, end - from);
-  if (!DOCS[word]) return null;
-  return {
-    pos: start, end,
-    above: true,
-    create() {
-      const dom = document.createElement("div");
-      dom.style.cssText = "max-width:340px;padding:8px 10px;white-space:pre-wrap;font-family:var(--mono);font-size:11.5px;line-height:1.5;";
-      dom.textContent = DOCS[word];
-      return { dom };
-    },
-  };
-});
-
 /* =================================================================
    BREAKPOINT GUTTER
 ================================================================= */
@@ -641,7 +583,7 @@ const state = EditorState.create({
     indentOnInput(), bracketMatching(), closeBrackets(), foldGutter(), lintGutter(), breakpointGutterExt,
     history(), highlightSelectionMatches(),
     autocompletion({ override: [pythonMemberCompletions, pythonImportCompletions] }),
-    python(), docsTooltip, debugLineField,
+    python(), debugLineField,
     pyLinter,
     themeCompartment.of([darkViewTheme, syntaxHighlighting(darkHighlight)]),
     wrapCompartment.of([]),
@@ -786,27 +728,30 @@ function openFile(path) {
 
 const iconFile = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;flex-shrink:0;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>`;
 function renderNode(node) {
+  const safeName = escapeHtml(node.name);
+  const safePath = escapeHtml(node.path);
   if (node.type === "file") {
     const active = node.path === activeFilePath;
-    return `<div class="col-row file-row${active ? " active" : ""}" data-path="${node.path}">
-      <div class="col-left">${iconFile}<span class="col-name">${node.name}</span></div>
-      <span class="row-action-btn" data-act="rename" data-path="${node.path}" title="Rename">✎</span>
-      <span class="row-action-btn" data-act="duplicate" data-path="${node.path}" title="Duplicate">⧉</span>
-      <span class="row-action-btn" data-act="download" data-path="${node.path}" title="Download">⤓</span>
-      <span class="row-action-btn" data-act="delete" data-path="${node.path}" title="Delete">✕</span>
+    return `<div class="col-row file-row${active ? " active" : ""}" data-path="${safePath}">
+      <div class="col-left">${iconFile}<span class="col-name">${safeName}</span></div>
+      <span class="row-action-btn" data-act="rename" data-path="${safePath}" title="Rename">✎</span>
+      <span class="row-action-btn" data-act="duplicate" data-path="${safePath}" title="Duplicate">⧉</span>
+      <span class="row-action-btn" data-act="download" data-path="${safePath}" title="Download">⤓</span>
+      <span class="row-action-btn" data-act="delete" data-path="${safePath}" title="Delete">✕</span>
     </div>`;
   }
   const fileCount = (node.children || []).length;
-  return `<details class="table-item" open data-folder="${node.path}">
+  return `<details class="table-item" open data-folder="${safePath}">
     <summary>
       <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-      ${node.name} <span class="n">${fileCount}</span>
-      <span class="row-action-btn" data-act="newfile-in" data-path="${node.path}" title="New file here">＋</span>
-      <span class="row-action-btn" data-act="delete" data-path="${node.path}" title="Delete folder">✕</span>
+      ${safeName} <span class="n">${fileCount}</span>
+      <span class="row-action-btn" data-act="newfile-in" data-path="${safePath}" title="New file here">＋</span>
+      <span class="row-action-btn" data-act="delete" data-path="${safePath}" title="Delete folder">✕</span>
     </summary>
     <div class="cols">${(node.children || []).map(renderNode).join("")}</div>
   </details>`;
 }
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function renderFileTree() { document.getElementById("fileTreeRoot").innerHTML = (fileTree.children || []).map(renderNode).join(""); }
 document.getElementById("fileTreeRoot").addEventListener("click", (e) => {
   const actEl = e.target.closest("[data-act]");
@@ -817,6 +762,7 @@ document.getElementById("fileTreeRoot").addEventListener("click", (e) => {
       if (!confirm(`Delete "${path}"? This can't be undone.`)) return;
       const parent = findParent(path);
       if (parent) parent.children = parent.children.filter((c) => c.path !== path);
+      Object.keys(breakpoints).forEach((p) => { if (p === path || p.startsWith(path + "/")) delete breakpoints[p]; });
       if (activeFilePath === path || activeFilePath.startsWith(path + "/")) {
         const firstFile = (fileTree.children || []).find((c) => c.type === "file");
         if (firstFile) openFile(firstFile.path);
@@ -856,7 +802,9 @@ document.getElementById("fileTreeRoot").addEventListener("click", (e) => {
   if (row) openFile(row.dataset.path);
 });
 function renamePath(node, newPath, newName) {
+  const oldPath = node.path;
   node.name = newName; node.path = newPath;
+  if (breakpoints[oldPath]) { breakpoints[newPath] = breakpoints[oldPath]; delete breakpoints[oldPath]; }
   if (node.children) node.children.forEach((c) => renamePath(c, newPath + "/" + c.name, c.name));
 }
 document.getElementById("btnNewFile").onclick = () => { const name = prompt("New file name:", "new_file.py"); if (!name) return; const p = uniquePath("", name); fileTree.children.push({ type: "file", name, path: p, content: "" }); renderFileTree(); openFile(p); };
@@ -885,13 +833,20 @@ function importZip(file) {
       const unzipped = fflate.unzipSync(buf);
       for (const [path, data] of Object.entries(unzipped)) {
         if (path.endsWith("/")) continue;
+        const safePath = sanitizeZipPath(path);
+        if (!safePath) continue;
         const text = new TextDecoder().decode(data);
-        addPathToTree(path, text);
+        addPathToTree(safePath, text);
       }
       renderFileTree();
     } catch (err) { alert("Couldn't read zip: " + err.message); }
   };
   reader.readAsArrayBuffer(file);
+}
+function sanitizeZipPath(path) {
+  // Strip ".." / "." segments so a crafted zip entry can't escape the project tree (zip-slip style paths).
+  const parts = String(path).split("/").filter((p) => p && p !== "." && p !== "..");
+  return parts.length ? parts.join("/") : null;
 }
 function addPathToTree(path, content) {
   const parts = path.split("/").filter(Boolean);
@@ -949,7 +904,6 @@ function csvToTable(text) {
   return `<table class="grid"><thead><tr>${head.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>
     <tbody>${body.slice(0, 500).map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
-function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function showPreview(path) {
   const node = findNode(path);
   if (!node) return;
@@ -1005,11 +959,31 @@ function appendOutputImage(dataUrl) {
   outputView.scrollTop = outputView.scrollHeight;
   document.querySelector('.pill-tab[data-tab="output"]').click();
 }
+/* Rich Python output (e.g. a DataFrame's _repr_html_()) is HTML generated by
+   whatever code just ran. Sanitize it before insertion: drop script/iframe/
+   object/embed/link/meta/base tags, strip on*= handlers, and neutralize
+   javascript:/data: URLs in href/src, so a crafted repr_html_ can't run JS
+   in this page's origin (which has access to localStorage, project files, etc). */
+function sanitizeHtml(html) {
+  const doc = new DOMParser().parseFromString(String(html), "text/html");
+  const DANGEROUS_TAGS = ["script", "iframe", "object", "embed", "link", "meta", "base", "form"];
+  DANGEROUS_TAGS.forEach((tag) => doc.querySelectorAll(tag).forEach((el) => el.remove()));
+  doc.querySelectorAll("*").forEach((el) => {
+    [...el.attributes].forEach((attr) => {
+      const n = attr.name.toLowerCase();
+      if (n.startsWith("on")) { el.removeAttribute(attr.name); return; }
+      if ((n === "href" || n === "src" || n === "action" || n === "formaction") && /^\s*javascript:/i.test(attr.value)) {
+        el.removeAttribute(attr.name);
+      }
+    });
+  });
+  return doc.body.innerHTML;
+}
 function appendOutputHtml(html) {
   outputEmpty.style.display = "none";
   const div = document.createElement("div");
   div.className = "console-html-block";
-  div.innerHTML = html;
+  div.innerHTML = sanitizeHtml(html);
   outputView.appendChild(div);
   outputView.scrollTop = outputView.scrollHeight;
   document.querySelector('.pill-tab[data-tab="output"]').click();
@@ -1023,15 +997,20 @@ function appendProblem(text) {
   problemsView.scrollTop = problemsView.scrollHeight;
   problemsTab.classList.add("has-error");
 }
-function renderVariables(varsObj) {
-  variablesEmpty.style.display = "none";
+function varsTableHtml(varsObj) {
   const entries = Object.entries(varsObj || {});
-  if (!entries.length) { variablesView.innerHTML = ""; variablesEmpty.style.display = "flex"; return; }
-  variablesView.innerHTML = `<table class="var-table">${entries.map(([k, v]) => {
+  if (!entries.length) return "";
+  return `<table class="var-table">${entries.map(([k, v]) => {
     const type = typeof v === "object" && v ? v.type : "";
     const val = typeof v === "object" && v ? v.value : v;
     return `<tr><td class="vname">${escapeHtml(k)}</td><td class="vtype">${escapeHtml(type)}</td><td class="vval">${escapeHtml(val)}</td></tr>`;
   }).join("")}</table>`;
+}
+function renderVariables(varsObj) {
+  const html = varsTableHtml(varsObj);
+  if (!html) { variablesView.innerHTML = ""; variablesEmpty.style.display = "flex"; return; }
+  variablesEmpty.style.display = "none";
+  variablesView.innerHTML = html;
 }
 function renderCallStack(frames) {
   if (!frames || !frames.length) return "";
@@ -1237,7 +1216,6 @@ self.onmessage = async (e) => {
     }
     return;
   }
-  if (msg.type === "restart") { postMessage({ type: "restarted" }); return; }
   if (msg.type !== "run" && msg.type !== "debug") return;
   try {
     await ready;
@@ -1483,7 +1461,13 @@ function showDebugStep() {
     if (debugTrace[i].depth <= depth) { stackFrames.push(`${debugTrace[i].func}()  — line ${debugTrace[i].line}`); depth = debugTrace[i].depth - 1; }
     if (depth <= 0) break;
   }
-  variablesView.insertAdjacentHTML("beforeend", renderCallStack(stackFrames));
+  const varsHtml = varsTableHtml(ev.vars);
+  const stackHtml = renderCallStack(stackFrames);
+  if (!varsHtml && !stackHtml) { variablesView.innerHTML = ""; variablesEmpty.style.display = "flex"; }
+  else {
+    variablesEmpty.style.display = "none";
+    variablesView.innerHTML = stackHtml + (varsHtml || `<p class="section-label">Variables</p><p class="pkg-note">No local variables at this step.</p>`);
+  }
 }
 document.getElementById("dbgStepInto").onclick = () => { if (debugIndex < debugTrace.length - 1) debugIndex++; else debugIndex = debugTrace.length; showDebugStep(); };
 document.getElementById("dbgStepOver").onclick = () => {
@@ -1565,12 +1549,19 @@ function saveProjectToStorage(silent) {
     return false;
   }
 }
+function isValidTree(node) {
+  if (!node || typeof node !== "object") return false;
+  if (typeof node.name !== "string" || typeof node.path !== "string") return false;
+  if (node.type === "file") return typeof node.content === "string";
+  if (node.type === "folder") return Array.isArray(node.children) && node.children.every(isValidTree);
+  return false;
+}
 function loadProjectFromStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
     const data = JSON.parse(raw);
-    if (!data.tree) return false;
+    if (!data.tree || !isValidTree(data.tree)) return false;
     fileTree = data.tree; activeFilePath = data.active && findNode(data.active, fileTree) ? data.active : "main.py";
     renderFileTree(); openFile(activeFilePath);
     return true;
