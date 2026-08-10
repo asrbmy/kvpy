@@ -136,6 +136,9 @@
 
   /* ---- shared modal bits ---- */
   .pkg-note{ font-size:11.5px; color:var(--text-faint); margin:0 0 12px; line-height:1.5; }
+  .welcome-credit{ font-family:var(--mono); font-size:11px; color:var(--text-faint); margin:0; padding-top:14px; border-top:1px solid var(--line-soft); }
+  .welcome-credit a{ color:var(--teal); text-decoration:none; }
+  .welcome-credit a:hover{ text-decoration:underline; }
   .pkg-search{ width:100%; margin-bottom:10px; }
   .pkg-row{ display:flex; align-items:center; justify-content:space-between; padding:8px 2px; border-bottom:1px solid var(--line-soft); font-family:var(--mono); font-size:12.5px; }
   .pkg-row:last-child{ border-bottom:none; }
@@ -300,6 +303,21 @@
   <span class="meta" id="statusPos">Ln 1, Col 1</span>
   <span class="meta" id="statusLen">0 chars</span>
   <span class="meta" id="statusFile">main.py</span>
+</div>
+
+<!-- Welcome back modal -->
+<div class="modal-overlay" id="welcomeBackModal">
+  <div class="modal-box">
+    <div class="modal-head"><h2>Welcome back</h2><span class="modal-close" id="welcomeBackClose">✕</span></div>
+    <div class="modal-body">
+      <p class="pkg-note" style="margin-bottom:16px;">You have a session saved on this device from last time. Pick up where you left off, or start with a clean slate.</p>
+      <p class="welcome-credit">KVPy — made by ASRBMY · <a href="#" id="creditGithub" target="_blank" rel="noopener noreferrer">GitHub repo</a> · <a href="#" id="creditLiveSite" target="_blank" rel="noopener noreferrer">live site</a></p>
+    </div>
+    <div class="modal-foot">
+      <button class="ghost" id="welcomeStartNew">Start a new one</button>
+      <button class="primary" id="welcomeRestore">Restore my previous session</button>
+    </div>
+  </div>
 </div>
 
 <!-- Shortcuts modal -->
@@ -1567,11 +1585,17 @@ function loadProjectFromStorage() {
     return true;
   } catch (e) { return false; }
 }
-(function maybeRestore() {
+const welcomeBackModal = document.getElementById("welcomeBackModal");
+function maybeShowWelcomeBack() {
   try {
-    if (localStorage.getItem(STORAGE_KEY) && confirm("A previously saved project was found in this browser. Restore it?")) loadProjectFromStorage();
-  } catch (e) {}
-})();
+    if (!localStorage.getItem(STORAGE_KEY)) return;
+  } catch (e) { return; }
+  welcomeBackModal.classList.add("open");
+}
+document.getElementById("welcomeRestore").onclick = () => { welcomeBackModal.classList.remove("open"); loadProjectFromStorage(); };
+document.getElementById("welcomeStartNew").onclick = () => welcomeBackModal.classList.remove("open");
+document.getElementById("welcomeBackClose").onclick = () => welcomeBackModal.classList.remove("open");
+maybeShowWelcomeBack();
 let autoSaveTimer = null;
 function applyAutoSave(on) {
   document.getElementById("setAutoSave").checked = on;
@@ -1723,7 +1747,7 @@ const shortcutsModal = document.getElementById("shortcutsModal");
 document.getElementById("btnShortcuts").onclick = () => shortcutsModal.classList.add("open");
 document.getElementById("shortcutsClose").onclick = () => shortcutsModal.classList.remove("open");
 document.getElementById("shortcutsGotIt").onclick = () => shortcutsModal.classList.remove("open");
-[shortcutsModal, packagesModal, inputModal, settingsModal].forEach((m) => m.addEventListener("click", (e) => { if (e.target === m) m.classList.remove("open"); }));
+[shortcutsModal, packagesModal, inputModal, settingsModal, welcomeBackModal].forEach((m) => m.addEventListener("click", (e) => { if (e.target === m) m.classList.remove("open"); }));
 </script>
 </body>
 </html>
