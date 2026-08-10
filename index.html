@@ -197,6 +197,15 @@
   .kbd-table td:last-child{ text-align:right; color:var(--text-dim); }
   .kbd-table kbd{ background:var(--surface-2); border:1px solid var(--line-soft); border-radius:3px; padding:1px 6px; font-family:var(--mono); font-size:11px; color:var(--text); }
   .input-field{ margin-bottom:10px; }
+  .sw-update-banner{
+    position:fixed; left:50%; bottom:20px; transform:translateX(-50%); z-index:80;
+    display:none; align-items:center; gap:14px; padding:10px 12px 10px 16px;
+    background:var(--surface); border:1px solid var(--line-soft); border-radius:10px;
+    box-shadow:0 12px 32px rgba(0,0,0,0.4); font-family:var(--mono); font-size:12.5px; color:var(--text);
+  }
+  .sw-update-banner.show{ display:flex; }
+  .sw-update-banner button{ padding:5px 12px; font-size:12px; }
+  .sw-update-banner .modal-close{ margin-left:2px; }
   .input-field label{ display:block; font-family:var(--mono); font-size:11px; color:var(--text-faint); margin-bottom:4px; }
   .input-field input{ width:100%; }
 
@@ -345,10 +354,17 @@
 
 <div class="statusbar">
   <span class="status" id="statusRuntime"><span class="status-dot"></span>Loading runtime…</span>
+  <span class="status err" id="statusOffline" style="display:none;"><span class="status-dot"></span>Offline — running from cache</span>
   <span class="spacer"></span>
   <span class="meta" id="statusPos">Ln 1, Col 1</span>
   <span class="meta" id="statusLen">0 chars</span>
   <span class="meta" id="statusFile">main.py</span>
+</div>
+
+<div class="sw-update-banner" id="swUpdateBanner">
+  <span>A new version of KVPy is available.</span>
+  <button class="primary" id="swUpdateBtn">Refresh</button>
+  <span class="modal-close" id="swUpdateDismiss">✕</span>
 </div>
 
 <!-- Welcome back modal -->
@@ -1794,6 +1810,49 @@ document.getElementById("btnShortcuts").onclick = () => shortcutsModal.classList
 document.getElementById("shortcutsClose").onclick = () => shortcutsModal.classList.remove("open");
 document.getElementById("shortcutsGotIt").onclick = () => shortcutsModal.classList.remove("open");
 [shortcutsModal, packagesModal, inputModal, settingsModal, welcomeBackModal].forEach((m) => m.addEventListener("click", (e) => { if (e.target === m) m.classList.remove("open"); }));
+
+/* =================================================================
+   OFFLINE SUPPORT (service worker)
+   Requires the page to be served over https:// or http://localhost —
+   browsers refuse to register service workers on file:// pages, so this
+   silently does nothing if you open index.html directly from disk. Host
+   it (e.g. GitHub Pages) to get real offline support.
+================================================================= */
+const statusOffline = document.getElementById("statusOffline");
+function updateOnlineStatus() { statusOffline.style.display = navigator.onLine ? "none" : "flex"; }
+window.addEventListener("online", updateOnlineStatus);
+window.addEventListener("offline", updateOnlineStatus);
+updateOnlineStatus();
+
+const swUpdateBanner = document.getElementById("swUpdateBanner");
+document.getElementById("swUpdateDismiss").onclick = () => swUpdateBanner.classList.remove("show");
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").then((registration) => {
+      function promptUpdate(worker) {
+        document.getElementById("swUpdateBtn").onclick = () => {
+          worker.postMessage({ type: "SKIP_WAITING" });
+        };
+        swUpdateBanner.classList.add("show");
+      }
+      if (registration.waiting && navigator.serviceWorker.controller) promptUpdate(registration.waiting);
+      registration.addEventListener("updatefound", () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) promptUpdate(newWorker);
+        });
+      });
+    }).catch(() => {});
+  });
+  let reloadedForUpdate = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadedForUpdate) return;
+    reloadedForUpdate = true;
+    window.location.reload();
+  });
+}
 </script>
 </body>
 </html>
