@@ -101,6 +101,7 @@
   .col-row.file-row{ cursor:pointer; }
   .col-row.file-row.active{ background:var(--accent-soft); color:var(--accent); }
   .col-row.file-row.active .col-name{ color:var(--accent); }
+  .col-row.file-row:hover .row-action-btn{ opacity:1; } /* kit only reveals these on a folder's <summary>:hover — files need their own rule */
   .file-row .row-action-btn{ margin-left:6px; }
 
   /* ---- editor ---- */
@@ -108,6 +109,40 @@
   .editor-titlebar{ display:flex; align-items:center; gap:8px; padding:6px 14px; border-bottom:1px solid var(--line-soft); font-family:var(--mono); font-size:11.5px; color:var(--text-dim); flex-shrink:0; background:var(--surface); }
   .editor-titlebar .dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); }
   .editor-titlebar .dot.debugging{ background:var(--error); animation:pulse 1s ease-in-out infinite; }
+  .editor-titlebar{ flex-wrap:wrap; row-gap:6px; }
+  .nb-toolbar{ display:none; align-items:center; gap:6px; margin-left:auto; }
+  .nb-toolbar.on{ display:flex; }
+  .nb-toolbar button{ padding:4px 9px; font-size:11px; }
+  .nb-host{ display:none; flex:1; min-height:0; overflow-y:auto; padding:16px; }
+  .nb-host.on{ display:block; }
+  .nb-cell{ display:flex; gap:8px; margin-bottom:14px; border:1px solid var(--line-soft); border-radius:8px; background:var(--surface); overflow:hidden; }
+  .nb-cell.markdown-cell{ background:var(--bg); }
+  .nb-cell-gutter{ flex-shrink:0; width:52px; display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 4px; background:var(--surface-2); border-right:1px solid var(--line-soft); }
+  .nb-exec-count{ font-family:var(--mono); font-size:10.5px; color:var(--text-faint); }
+  .nb-run{ background:transparent; border:1px solid var(--line-soft); border-radius:5px; width:26px; height:26px; color:var(--teal); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .nb-run:hover{ border-color:var(--teal); }
+  .nb-run.running{ color:var(--accent); animation:pulse 1s ease-in-out infinite; }
+  .nb-cell-body{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .nb-cell-toolbar{ display:flex; align-items:center; gap:8px; padding:5px 8px; border-bottom:1px solid var(--line-soft); }
+  .nb-cell-toolbar select{ padding:3px 6px; font-size:11px; }
+  .nb-cell-actions{ margin-left:auto; display:flex; gap:2px; }
+  .nb-cell-actions button{ background:transparent; border:1px solid transparent; border-radius:4px; padding:3px 7px; color:var(--text-dim); cursor:pointer; font-size:12px; }
+  .nb-cell-actions button:hover{ border-color:var(--line-soft); color:var(--text); }
+  .nb-cell-editor{ min-height:34px; }
+  .nb-cell-editor .cm-editor{ height:auto; }
+  .nb-cell-editor .cm-scroller{ font-family:var(--ide-font); }
+  .nb-cell-output{ border-top:1px solid var(--line-soft); padding:8px 12px; font-family:var(--ide-font); font-size:12px; }
+  .nb-cell-output:empty{ display:none; }
+  .nb-cell-output .console-line{ white-space:pre-wrap; word-break:break-word; }
+  .nb-cell-output .console-line.stderr{ color:var(--error); }
+  .nb-cell-output .console-line.result{ color:var(--teal); }
+  .nb-cell-output img{ max-width:100%; border-radius:6px; margin:6px 0; display:block; }
+  .nb-md-preview{ padding:12px 16px; font-size:13px; line-height:1.6; color:var(--text); cursor:text; }
+  .nb-md-preview h1, .nb-md-preview h2, .nb-md-preview h3{ font-family:var(--mono); color:var(--accent); margin:0 0 10px; }
+  .nb-md-preview code{ background:var(--surface-2); padding:1px 5px; border-radius:3px; font-family:var(--mono); font-size:12px; }
+  .nb-md-preview a{ color:var(--teal); }
+  .nb-md-preview.empty{ color:var(--text-faint); font-style:italic; }
+  .nb-md-edit{ width:100%; min-height:80px; border:none; background:transparent; color:var(--text); font-family:var(--ide-font); font-size:13px; padding:12px 16px; resize:vertical; outline:none; }
   .editor-body{ flex:1; min-height:0; display:flex; }
   .cm-host{ flex:1; min-height:0; overflow:hidden; }
   .cm-host .cm-editor{ height:100%; outline:none; }
@@ -157,6 +192,14 @@
   .console-html-block table.dataframe td{ padding:5px 10px; border-bottom:1px solid rgba(38,50,55,0.35); white-space:nowrap; }
   .console-html-block table.dataframe tr:hover{ background:var(--surface-2); }
   .console-html-block table.grid{ width:100%; }
+  .table-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+  .table-filter{ flex:1; max-width:220px; }
+  .table-count{ font-family:var(--mono); font-size:10.5px; color:var(--text-faint); white-space:nowrap; }
+  .console-html-block th.sortable{ cursor:pointer; user-select:none; }
+  .console-html-block th.sortable:hover{ color:var(--accent); }
+  .console-html-block th.sort-asc::after{ content:" ▲"; font-size:9px; }
+  .console-html-block th.sort-desc::after{ content:" ▼"; font-size:9px; }
+  .console-html-block tr.row-hidden{ display:none; }
 
   .console-view pre{ margin:0; font-family:var(--ide-font); font-size:11.5px; white-space:pre-wrap; word-break:break-word; color:var(--text-dim); }
 
@@ -195,7 +238,18 @@
   .kbd-table{ width:100%; border-collapse:collapse; }
   .kbd-table td{ padding:6px 0; font-size:12.5px; border-bottom:1px solid var(--line-soft); }
   .kbd-table td:last-child{ text-align:right; color:var(--text-dim); }
-  .kbd-table kbd{ background:var(--surface-2); border:1px solid var(--line-soft); border-radius:3px; padding:1px 6px; font-family:var(--mono); font-size:11px; color:var(--text); }
+  .kbd-table kbd, .settings-note kbd{ background:var(--surface-2); border:1px solid var(--line-soft); border-radius:3px; padding:1px 6px; font-family:var(--mono); font-size:11px; color:var(--text); }
+  .cmd-palette-overlay{ align-items:flex-start !important; padding-top:12vh; }
+  .cmd-palette-box{ width:min(560px, 100%) !important; }
+  .cmd-palette-input{ width:100%; border:none !important; border-radius:0 !important; border-bottom:1px solid var(--line-soft) !important; padding:16px 18px !important; font-size:13.5px !important; background:transparent !important; }
+  .cmd-palette-input:focus{ outline:none; box-shadow:none; }
+  .cmd-palette-list{ max-height:52vh; overflow-y:auto; padding:6px; }
+  .cmd-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:9px 12px; border-radius:6px; cursor:pointer; font-size:12.5px; }
+  .cmd-row:hover, .cmd-row.sel{ background:var(--surface-2); }
+  .cmd-row .cmd-group{ color:var(--accent); font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; margin-right:10px; }
+  .cmd-row .cmd-label{ flex:1; color:var(--text); }
+  .cmd-row .cmd-sc{ font-family:var(--mono); font-size:10.5px; color:var(--text-faint); }
+  .cmd-empty{ padding:24px 18px; text-align:center; color:var(--text-faint); font-size:12.5px; }
   .input-field{ margin-bottom:10px; }
   .sw-update-banner{
     position:fixed; left:50%; bottom:20px; transform:translateX(-50%); z-index:80;
@@ -319,10 +373,20 @@
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
   <section class="editor-pane">
-    <div class="editor-titlebar"><span class="dot" id="fileDot"></span><span id="activeFileLabel">main.py</span></div>
+    <div class="editor-titlebar">
+      <span class="dot" id="fileDot"></span><span id="activeFileLabel">main.py</span>
+      <div class="nb-toolbar" id="nbToolbar">
+        <button class="ghost" id="nbRunAll" title="Run all cells top to bottom">▶ Run All</button>
+        <button class="ghost" id="nbRestartRunAll" title="Restart the runtime, then run all cells">⟲ Restart &amp; Run All</button>
+        <button class="ghost" id="nbAddCode" title="Add code cell at the end">+ Code</button>
+        <button class="ghost" id="nbAddMarkdown" title="Add markdown cell at the end">+ Markdown</button>
+        <button class="ghost" id="nbClearOutputs" title="Clear all cell outputs">Clear Outputs</button>
+      </div>
+    </div>
     <div class="editor-body">
       <div class="cm-host" id="editorHost"></div>
       <div class="minimap-host" id="minimapHost"></div>
+      <div class="nb-host" id="notebookHost"></div>
     </div>
   </section>
 
@@ -382,6 +446,16 @@
   </div>
 </div>
 
+<!-- Command palette -->
+<div class="modal-overlay cmd-palette-overlay" id="cmdPaletteModal">
+  <div class="modal-box cmd-palette-box">
+    <div class="modal-body" style="padding:0;">
+      <input class="input-mono cmd-palette-input" id="cmdPaletteInput" placeholder="Type a command…" autocomplete="off" spellcheck="false">
+      <div class="cmd-palette-list" id="cmdPaletteList"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Shortcuts modal -->
 <div class="modal-overlay" id="shortcutsModal">
   <div class="modal-box">
@@ -394,6 +468,10 @@
         <tr><td>Find / Replace</td><td><kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>H</kbd></td></tr>
         <tr><td>Undo / Redo</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td></tr>
         <tr><td>Toggle breakpoint</td><td>Click line-number gutter</td></tr>
+        <tr><td>Run notebook cell &amp; advance</td><td><kbd>Shift</kbd>+<kbd>Enter</kbd></td></tr>
+        <tr><td>Run notebook cell in place</td><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td></tr>
+        <tr><td>Command palette</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></td></tr>
+        <tr><td>Format document</td><td><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd></td></tr>
         <tr><td>Type <code>str.</code></td><td>method suggestions</td></tr>
         <tr><td>Type <code>import pan</code></td><td>package suggestions</td></tr>
       </table>
@@ -455,6 +533,16 @@
         <div class="settings-row"><label class="rowlabel">Runtime</label><span id="setPyVersion" class="meta">Loading…</span></div>
         <div class="settings-row"><label class="rowlabel">Packages</label><button class="ghost" id="setOpenPackages">Manage…</button></div>
         <div class="settings-row"><label class="rowlabel">Restart runtime</label><button class="ghost" id="setRestartRuntime">Restart</button></div>
+      </div>
+      <div class="settings-group">
+        <h3>Code quality</h3>
+        <div class="settings-row"><label class="rowlabel">Smart autocomplete (Jedi)</label><input type="checkbox" id="setJediEnabled"></div>
+        <div class="settings-note">Type-aware suggestions from a real Python analyzer, installed on first use. Falls back to the built-in heuristics if it can't load.</div>
+        <div class="settings-row"><label class="rowlabel">Lint as you type (pyflakes)</label><input type="checkbox" id="setLintEnabled"></div>
+        <div class="settings-row"><label class="rowlabel">Formatter</label>
+          <select id="setFormatter"><option value="none">Off</option><option value="autopep8">autopep8</option><option value="black">black</option></select></div>
+        <div class="settings-row"><label class="rowlabel">Format on save</label><input type="checkbox" id="setFormatOnSave"></div>
+        <div class="settings-note">Formatters install on first use (autopep8 is fast and lightweight; black is stricter but slower to install). <kbd>Shift+Alt+F</kbd> formats on demand; <kbd>Ctrl+Shift+P</kbd> opens the command palette.</div>
       </div>
       <div class="settings-group">
         <h3>Terminal</h3>
@@ -595,17 +683,50 @@ function pythonImportCompletions(context) {
   const options = PACKAGE_NAMES.map((name) => ({ label: name, type: "namespace" }));
   return { from: word ? word.from : context.pos, options, validFor: /^[\w.]*$/ };
 }
+const JEDI_TYPE_MAP = { module: "namespace", class: "class", instance: "variable", function: "function", param: "variable", statement: "variable", keyword: "keyword", property: "property", path: "text" };
+async function jediCompletionSource(context) {
+  if (!settings.jediEnabled || !runtimeReady) return null;
+  const word = context.matchBefore(/[\w.]*/);
+  if (!word) return null;
+  if (word.from === word.to && !context.explicit) return null;
+  const line = context.state.doc.lineAt(context.pos);
+  const payload = { code: context.state.doc.toString(), line: line.number, column: context.pos - line.from };
+  const result = await workerRpc("complete", payload, 6000);
+  if (context.aborted || !result || !Array.isArray(result.completions)) return null;
+  const dotIdx = Math.max(word.text.lastIndexOf("."), -1);
+  const from = dotIdx >= 0 ? word.from + dotIdx + 1 : word.from;
+  const options = result.completions.map((c) => ({
+    label: c.name,
+    type: JEDI_TYPE_MAP[c.type] || "variable",
+    detail: c.sig || c.type,
+    boost: 1, // prefer real analyzer results over the static heuristics when both match
+  }));
+  if (!options.length) return null;
+  return { from, options, validFor: /^\w*$/ };
+}
 
 /* =================================================================
    BREAKPOINT GUTTER
 ================================================================= */
 let activeFilePath = "main.py"; // declared early: referenced synchronously by the breakpoint gutter on first editor mount
 let breakpoints = {}; // { "path": Set(lineNumbers) }
+let runtimeReady = false; // declared early: openFile() below can call scheduleLint(), which checks this, synchronously on load
+let notebookMode = false; // declared early: openFile() below reads this synchronously on load
+let notebookCells = [];
+let cellViews = {};
+let notebookCellCounter = 0;
+let cellExecCounter = 0;
+const cellRunResolvers = {};
+const settings = { clearOnRun: false, jediEnabled: true, lintEnabled: true, formatter: "autopep8", formatOnSave: false }; // declared early: openFile() below can call scheduleLint() synchronously on load
 function bpSetFor(path) { if (!breakpoints[path]) breakpoints[path] = new Set(); return breakpoints[path]; }
 function toggleBreakpoint(lineNo) {
   const set = bpSetFor(activeFilePath);
   if (set.has(lineNo)) set.delete(lineNo); else set.add(lineNo);
   view.dispatch({});
+}
+function toggleBreakpointAtCursor() {
+  const lineNo = view.state.doc.lineAt(view.state.selection.main.head).number;
+  toggleBreakpoint(lineNo);
 }
 class BPMarker extends GutterMarker {
   toDOM() { const d = document.createElement("div"); d.className = "cm-breakpoint-dot set"; return d; }
@@ -650,8 +771,9 @@ const wrapCompartment = new Compartment();
 const fontSizeCompartment = new Compartment();
 const tabSizeCompartment = new Compartment();
 
-let currentDiagnostics = [];
-const pyLinter = linter(() => currentDiagnostics, { delay: 0 });
+let runtimeDiagnostics = [];
+let lintDiagnostics = [];
+const pyLinter = linter(() => [...runtimeDiagnostics, ...lintDiagnostics], { delay: 0 });
 let minimapView = null; // declared early: referenced by the updateListener below
 
 const state = EditorState.create({
@@ -662,7 +784,7 @@ const state = EditorState.create({
     EditorState.allowMultipleSelections.of(true),
     indentOnInput(), bracketMatching(), closeBrackets(), foldGutter(), lintGutter(), breakpointGutterExt,
     history(), highlightSelectionMatches(),
-    autocompletion({ override: [pythonMemberCompletions, pythonImportCompletions] }),
+    autocompletion({ override: [pythonMemberCompletions, pythonImportCompletions, jediCompletionSource] }),
     python(), debugLineField,
     pyLinter,
     themeCompartment.of([darkViewTheme, syntaxHighlighting(darkHighlight)]),
@@ -673,6 +795,7 @@ const state = EditorState.create({
     EditorView.updateListener.of((u) => {
       if (u.docChanged || u.selectionSet) updateStatusBar();
       if (u.docChanged && minimapView) minimapView.dispatch({ changes: u.changes });
+      if (u.docChanged) scheduleLint();
     }),
   ],
 });
@@ -792,18 +915,39 @@ function uniquePath(parentPath, name) {
   }
   return candidate;
 }
-function saveActiveFileFromEditor() { const node = findNode(activeFilePath); if (node) node.content = view.state.doc.toString(); }
+function isNotebookPath(path) { return /\.ipynb$/i.test(path); }
+function saveActiveFileFromEditor() {
+  const node = findNode(activeFilePath);
+  if (!node) return;
+  if (notebookMode && isNotebookPath(activeFilePath)) {
+    syncNotebookCellSources();
+    node.content = cellsToIpynbJson(notebookCells);
+  } else if (!notebookMode) {
+    node.content = view.state.doc.toString();
+  }
+}
 function openFile(path) {
   saveActiveFileFromEditor();
   const node = findNode(path);
   if (!node || node.type !== "file") return;
   activeFilePath = path;
-  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: node.content } });
   document.getElementById("activeFileLabel").textContent = path;
   statusFile.textContent = path;
-  renderFileTree(); updateStatusBar(); view.dispatch({});
-  if (/\.(csv|json)$/i.test(path)) showPreview(path);
-  view.focus();
+  renderFileTree();
+  if (isNotebookPath(path)) {
+    if (notebookMode) exitNotebookMode();
+    notebookCells = parseIpynbToCells(node.content);
+    enterNotebookMode();
+    renderNotebook();
+  } else {
+    if (notebookMode) exitNotebookMode();
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: node.content } });
+    view.dispatch({});
+    updateStatusBar();
+    if (/\.(csv|json)$/i.test(path)) showPreview(path);
+    lintDiagnostics = []; forceLinting(view); scheduleLint();
+    view.focus();
+  }
 }
 
 const iconFile = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;flex-shrink:0;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>`;
@@ -941,17 +1085,10 @@ function addPathToTree(path, content) {
   node.children.push({ type: "file", name: parts[parts.length - 1], path: finalPath, content });
 }
 function importIpynb(filename, text) {
-  const nb = JSON.parse(text);
-  const cells = nb.cells || [];
-  let out = [];
-  cells.forEach((cell, i) => {
-    const src = Array.isArray(cell.source) ? cell.source.join("") : (cell.source || "");
-    if (cell.cell_type === "code") out.push(`# %% cell ${i + 1}\n${src}`);
-    else if (cell.cell_type === "markdown") out.push(`# %% markdown cell ${i + 1}\n${src.split("\n").map((l) => "# " + l).join("\n")}`);
-  });
-  const name = filename.replace(/\.ipynb$/i, "") + "_imported.py";
-  const p = uniquePath("", name);
-  fileTree.children.push({ type: "file", name: p.split("/").pop(), path: p, content: out.join("\n\n") + "\n" });
+  const nb = JSON.parse(text); // throws on invalid JSON — caller shows an alert
+  if (!nb || !Array.isArray(nb.cells)) throw new Error("missing a 'cells' array — not a valid .ipynb");
+  const p = uniquePath("", filename);
+  fileTree.children.push({ type: "file", name: filename, path: p, content: text });
   renderFileTree(); openFile(p);
 }
 function downloadZip() {
@@ -988,13 +1125,79 @@ function showPreview(path) {
   const node = findNode(path);
   if (!node) return;
   outputEmpty.style.display = "none";
-  if (/\.csv$/i.test(path)) outputView.innerHTML = `<div class="console-html-block">${csvToTable(node.content)}</div>`;
-  else if (/\.json$/i.test(path)) {
+  if (/\.csv$/i.test(path)) {
+    const div = document.createElement("div");
+    div.className = "console-html-block";
+    div.innerHTML = csvToTable(node.content);
+    outputView.innerHTML = "";
+    outputView.appendChild(div);
+    enhanceTable(div);
+  } else if (/\.json$/i.test(path)) {
     let pretty;
     try { pretty = JSON.stringify(JSON.parse(node.content), null, 2); } catch (e) { pretty = node.content + "\n\n(Invalid JSON — showing raw text)"; }
     outputView.innerHTML = `<pre>${escapeHtml(pretty)}</pre>`;
   }
   document.querySelector('.pill-tab[data-tab="output"]').click();
+}
+
+/* Click-to-sort, type-to-filter for any <table> we render (DataFrames, CSV
+   previews, notebook cell output) — pure client-side, no changes needed on
+   the Python side. */
+function enhanceTable(container) {
+  const table = container.querySelector("table");
+  if (!table) return;
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+  if (!thead || !tbody) return;
+  const headers = [...thead.querySelectorAll("th")];
+  const rowCount = tbody.querySelectorAll("tr").length;
+  if (!rowCount) return;
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "table-toolbar";
+  const filterInput = document.createElement("input");
+  filterInput.className = "input-mono table-filter";
+  filterInput.placeholder = "Filter rows…";
+  const countEl = document.createElement("span");
+  countEl.className = "table-count";
+  toolbar.appendChild(filterInput);
+  toolbar.appendChild(countEl);
+  container.insertBefore(toolbar, table);
+
+  function updateCount() {
+    const total = tbody.querySelectorAll("tr").length;
+    const visible = tbody.querySelectorAll("tr:not(.row-hidden)").length;
+    countEl.textContent = `${visible} / ${total} rows`;
+  }
+  filterInput.addEventListener("input", () => {
+    const q = filterInput.value.toLowerCase();
+    tbody.querySelectorAll("tr").forEach((row) => {
+      row.classList.toggle("row-hidden", !(!q || row.textContent.toLowerCase().includes(q)));
+    });
+    updateCount();
+  });
+
+  let sortState = { col: -1, dir: 1 };
+  headers.forEach((th, colIdx) => {
+    th.classList.add("sortable");
+    th.title = "Click to sort";
+    th.addEventListener("click", () => {
+      sortState = sortState.col === colIdx ? { col: colIdx, dir: -sortState.dir } : { col: colIdx, dir: 1 };
+      headers.forEach((h) => h.classList.remove("sort-asc", "sort-desc"));
+      th.classList.add(sortState.dir === 1 ? "sort-asc" : "sort-desc");
+      const rows = [...tbody.querySelectorAll("tr")];
+      rows.sort((a, b) => {
+        const av = a.children[colIdx] ? a.children[colIdx].textContent.trim() : "";
+        const bv = b.children[colIdx] ? b.children[colIdx].textContent.trim() : "";
+        const an = parseFloat(av), bn = parseFloat(bv);
+        const bothNumeric = av !== "" && bv !== "" && !isNaN(an) && !isNaN(bn);
+        const cmp = bothNumeric ? an - bn : av.localeCompare(bv);
+        return cmp * sortState.dir;
+      });
+      rows.forEach((r) => tbody.appendChild(r));
+    });
+  });
+  updateCount();
 }
 
 /* =================================================================
@@ -1066,6 +1269,7 @@ function appendOutputHtml(html) {
   div.innerHTML = sanitizeHtml(html);
   outputView.appendChild(div);
   outputView.scrollTop = outputView.scrollHeight;
+  enhanceTable(div);
   document.querySelector('.pill-tab[data-tab="output"]').click();
 }
 function appendProblem(text) {
@@ -1106,7 +1310,7 @@ document.getElementById("btnClear").onclick = () => {
   clearDiagnostics();
 };
 
-function clearDiagnostics() { currentDiagnostics = []; forceLinting(view); }
+function clearDiagnostics() { runtimeDiagnostics = []; forceLinting(view); }
 function highlightErrorFromMessage(message) {
   const matches = [...message.matchAll(/line (\d+)/g)];
   if (!matches.length) return;
@@ -1115,7 +1319,7 @@ function highlightErrorFromMessage(message) {
   if (lineNo < 1 || lineNo > total) return;
   const line = view.state.doc.line(lineNo);
   const summary = message.trim().split("\n").pop();
-  currentDiagnostics = [{ from: line.from, to: line.to, severity: "error", message: summary }];
+  runtimeDiagnostics = [{ from: line.from, to: line.to, severity: "error", message: summary }];
   forceLinting(view);
   view.dispatch({ effects: EditorView.scrollIntoView(line.from, { y: "center" }) });
 }
@@ -1127,16 +1331,484 @@ function formatTraceback(message) {
 }
 
 /* =================================================================
+   NOTEBOOK MODE (.ipynb) — multi-cell editing with a shared, persistent
+   Python namespace across cells (real notebook semantics), executed via
+   the same worker as everything else. Cells serialize back to standard
+   nbformat JSON, so Save/Download/ZIP/autosave all keep working unchanged.
+================================================================= */
+function newCellId() { return "cell-" + (++notebookCellCounter) + "-" + Math.random().toString(36).slice(2, 7); }
+
+function parseIpynbToCells(jsonText) {
+  let nb = null;
+  try { nb = JSON.parse(jsonText); } catch (e) {}
+  const rawCells = (nb && Array.isArray(nb.cells)) ? nb.cells : [];
+  if (!rawCells.length) return [{ id: newCellId(), type: "code", source: "", outputs: [], execCount: null }];
+  return rawCells.map((c) => {
+    const src = Array.isArray(c.source) ? c.source.join("") : (c.source || "");
+    const type = c.cell_type === "markdown" ? "markdown" : "code";
+    const outputs = [];
+    if (type === "code" && Array.isArray(c.outputs)) {
+      c.outputs.forEach((o) => {
+        if (o.output_type === "stream") {
+          outputs.push({ kind: o.name === "stderr" ? "stderr" : "stdout", text: Array.isArray(o.text) ? o.text.join("") : (o.text || "") });
+        } else if (o.output_type === "execute_result" || o.output_type === "display_data") {
+          const data = o.data || {};
+          if (data["image/png"]) outputs.push({ kind: "image", dataUrl: "data:image/png;base64," + data["image/png"] });
+          else if (data["text/html"]) outputs.push({ kind: "html", html: Array.isArray(data["text/html"]) ? data["text/html"].join("") : data["text/html"] });
+          else if (data["text/plain"]) outputs.push({ kind: "result", text: Array.isArray(data["text/plain"]) ? data["text/plain"].join("") : data["text/plain"] });
+        } else if (o.output_type === "error") {
+          outputs.push({ kind: "error", text: Array.isArray(o.traceback) ? o.traceback.join("\n") : `${o.ename}: ${o.evalue}` });
+        }
+      });
+    }
+    return { id: newCellId(), type, source: src, outputs, execCount: type === "code" ? (c.execution_count || null) : null };
+  });
+}
+function cellsToIpynbJson(cells) {
+  const nbCells = cells.map((c) => {
+    const sourceLines = c.source.split("\n").map((l, i, arr) => (i < arr.length - 1 ? l + "\n" : l));
+    if (c.type === "markdown") return { cell_type: "markdown", metadata: {}, source: sourceLines };
+    const outputs = [];
+    c.outputs.forEach((o) => {
+      if (o.kind === "stdout" || o.kind === "stderr") outputs.push({ output_type: "stream", name: o.kind, text: o.text.split("\n").map((l, i, a) => (i < a.length - 1 ? l + "\n" : l)) });
+      else if (o.kind === "image") outputs.push({ output_type: "display_data", data: { "image/png": o.dataUrl.replace(/^data:image\/png;base64,/, "") }, metadata: {} });
+      else if (o.kind === "html") outputs.push({ output_type: "display_data", data: { "text/html": o.html }, metadata: {} });
+      else if (o.kind === "result") outputs.push({ output_type: "execute_result", data: { "text/plain": o.text }, metadata: {}, execution_count: c.execCount || null });
+      else if (o.kind === "error") outputs.push({ output_type: "error", ename: "Error", evalue: "", traceback: o.text.split("\n") });
+    });
+    return { cell_type: "code", metadata: {}, execution_count: c.execCount || null, outputs, source: sourceLines };
+  });
+  return JSON.stringify({ cells: nbCells, metadata: { kernelspec: { name: "python3", display_name: "Python 3" } }, nbformat: 4, nbformat_minor: 5 }, null, 1);
+}
+function syncNotebookCellSources() {
+  notebookCells.forEach((c) => { if (c.type === "code" && cellViews[c.id]) c.source = cellViews[c.id].state.doc.toString(); });
+}
+
+/* Minimal, XSS-safe markdown: text is escaped first, then a small set of
+   regexes wrap the (already-escaped) text in tags we control — user input
+   can never introduce a live tag this way. */
+function markdownToHtml(src) {
+  if (!src || !src.trim()) return "";
+  let html = escapeHtml(src);
+  html = html
+    .replace(/^######\s?(.*)$/gm, "<h6>$1</h6>")
+    .replace(/^#####\s?(.*)$/gm, "<h5>$1</h5>")
+    .replace(/^####\s?(.*)$/gm, "<h4>$1</h4>")
+    .replace(/^###\s?(.*)$/gm, "<h3>$1</h3>")
+    .replace(/^##\s?(.*)$/gm, "<h2>$1</h2>")
+    .replace(/^#\s?(.*)$/gm, "<h1>$1</h1>");
+  html = html.replace(/```([\s\S]*?)```/g, (m, code) => `<pre><code>${code}</code></pre>`);
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  html = html.replace(/(^|\n)((?:- .*(?:\n|$))+)/g, (m, pre, block) => {
+    const items = block.trim().split("\n").map((l) => `<li>${l.replace(/^- /, "")}</li>`).join("");
+    return `${pre}<ul>${items}</ul>`;
+  });
+  html = html.split(/\n{2,}/).map((block) => {
+    if (/^\s*<(h\d|ul|pre)/.test(block)) return block;
+    if (!block.trim()) return "";
+    return `<p>${block.replace(/\n/g, "<br>")}</p>`;
+  }).join("\n");
+  return html;
+}
+
+function buildCellExtensions() {
+  return [
+    lineNumbers(), highlightActiveLine(), drawSelection(), dropCursor(),
+    EditorState.allowMultipleSelections.of(true),
+    indentOnInput(), bracketMatching(), closeBrackets(), foldGutter(),
+    history(), highlightSelectionMatches(),
+    autocompletion({ override: [pythonMemberCompletions, pythonImportCompletions, jediCompletionSource] }),
+    python(),
+    dark ? [darkViewTheme, syntaxHighlighting(darkHighlight)] : [lightViewTheme, syntaxHighlighting(lightHighlight)],
+    EditorView.lineWrapping,
+    keymap.of([
+      ...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap, ...completionKeymap,
+      indentWithTab, { key: "Mod-Space", run: startCompletion },
+    ]),
+    EditorView.domEventHandlers({
+      keydown(event, cmView) {
+        if (event.shiftKey && event.key === "Enter") {
+          event.preventDefault();
+          const cellId = cmView.dom.closest(".nb-cell")?.dataset.cellId;
+          if (cellId) runCellAndAdvance(cellId);
+          return true;
+        }
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          const cellId = cmView.dom.closest(".nb-cell")?.dataset.cellId;
+          if (cellId) runCell(cellId);
+          return true;
+        }
+        return false;
+      },
+    }),
+  ];
+}
+
+function notebookHostEl() { return document.getElementById("notebookHost"); }
+function enterNotebookMode() {
+  notebookMode = true;
+  document.getElementById("editorHost").style.display = "none";
+  document.getElementById("minimapHost").classList.remove("on");
+  notebookHostEl().classList.add("on");
+  document.getElementById("nbToolbar").classList.add("on");
+  btnRun.style.display = "none"; btnDebug.style.display = "none";
+}
+function exitNotebookMode() {
+  notebookMode = false;
+  document.getElementById("editorHost").style.display = "";
+  notebookHostEl().classList.remove("on");
+  document.getElementById("nbToolbar").classList.remove("on");
+  btnRun.style.display = ""; btnDebug.style.display = "";
+  Object.values(cellViews).forEach((v) => { try { v.destroy(); } catch (e) {} });
+  cellViews = {};
+}
+function renderNotebook() {
+  Object.values(cellViews).forEach((v) => { try { v.destroy(); } catch (e) {} });
+  cellViews = {};
+  const host = notebookHostEl();
+  host.innerHTML = "";
+  notebookCells.forEach((cell) => host.appendChild(buildCellDom(cell)));
+}
+function buildCellDom(cell) {
+  const wrap = document.createElement("div");
+  wrap.className = "nb-cell" + (cell.type === "markdown" ? " markdown-cell" : "");
+  wrap.dataset.cellId = cell.id;
+
+  const gutter = document.createElement("div");
+  gutter.className = "nb-cell-gutter";
+  const execEl = document.createElement("span");
+  execEl.className = "nb-exec-count";
+  execEl.textContent = cell.type === "code" ? `[${cell.execCount ?? " "}]` : "";
+  const runBtn = document.createElement("button");
+  runBtn.className = "nb-run";
+  runBtn.title = cell.type === "code" ? "Run cell (Shift+Enter)" : "Render markdown";
+  runBtn.textContent = "▶";
+  runBtn.onclick = () => (cell.type === "code" ? runCell(cell.id) : renderMarkdownCell(cell.id));
+  gutter.appendChild(execEl); gutter.appendChild(runBtn);
+
+  const body = document.createElement("div");
+  body.className = "nb-cell-body";
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "nb-cell-toolbar";
+  const typeSel = document.createElement("select");
+  [["code", "Code"], ["markdown", "Markdown"]].forEach(([val, label]) => {
+    const o = document.createElement("option"); o.value = val; o.textContent = label; typeSel.appendChild(o);
+  });
+  typeSel.value = cell.type;
+  typeSel.onchange = () => setCellType(cell.id, typeSel.value);
+  const actions = document.createElement("div");
+  actions.className = "nb-cell-actions";
+  actions.innerHTML = `<button data-act="up" title="Move up">↑</button><button data-act="down" title="Move down">↓</button><button data-act="add" title="Insert cell below">+</button><button data-act="delete" title="Delete cell">✕</button>`;
+  actions.addEventListener("click", (e) => {
+    const btn = e.target.closest("button"); if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === "up") moveCell(cell.id, -1);
+    else if (act === "down") moveCell(cell.id, 1);
+    else if (act === "add") addCell(cell.id, "code");
+    else if (act === "delete") deleteCell(cell.id);
+  });
+  toolbar.appendChild(typeSel); toolbar.appendChild(actions);
+  body.appendChild(toolbar);
+
+  if (cell.type === "code") {
+    const editorHost = document.createElement("div");
+    editorHost.className = "nb-cell-editor";
+    body.appendChild(editorHost);
+    const cmView = new EditorView({ state: EditorState.create({ doc: cell.source, extensions: buildCellExtensions() }), parent: editorHost });
+    cellViews[cell.id] = cmView;
+    const outputEl = document.createElement("div");
+    outputEl.className = "nb-cell-output";
+    outputEl.id = "cellout-" + cell.id;
+    renderCellOutputInto(outputEl, cell.outputs);
+    body.appendChild(outputEl);
+  } else {
+    const preview = document.createElement("div");
+    preview.className = "nb-md-preview" + (cell.source.trim() ? "" : " empty");
+    preview.innerHTML = cell.source.trim() ? markdownToHtml(cell.source) : "Empty markdown cell — click to edit.";
+    preview.onclick = () => editMarkdownCell(cell.id);
+    body.appendChild(preview);
+  }
+  wrap.appendChild(gutter); wrap.appendChild(body);
+  return wrap;
+}
+function editMarkdownCell(cellId) {
+  const cell = notebookCells.find((c) => c.id === cellId);
+  const cellEl = notebookHostEl().querySelector(`[data-cell-id="${cellId}"]`);
+  if (!cell || !cellEl) return;
+  const preview = cellEl.querySelector(".nb-md-preview");
+  if (!preview) return;
+  const textarea = document.createElement("textarea");
+  textarea.className = "nb-md-edit";
+  textarea.value = cell.source;
+  textarea.addEventListener("blur", () => { cell.source = textarea.value; renderMarkdownCell(cellId); });
+  textarea.addEventListener("keydown", (e) => { if (e.shiftKey && e.key === "Enter") { e.preventDefault(); cell.source = textarea.value; renderMarkdownCell(cellId); } });
+  preview.replaceWith(textarea);
+  textarea.focus();
+}
+function renderMarkdownCell(cellId) {
+  const cell = notebookCells.find((c) => c.id === cellId);
+  const cellEl = notebookHostEl().querySelector(`[data-cell-id="${cellId}"]`);
+  if (!cell || !cellEl) return;
+  const body = cellEl.querySelector(".nb-cell-body");
+  const old = body.querySelector(".nb-md-edit, .nb-md-preview");
+  const preview = document.createElement("div");
+  preview.className = "nb-md-preview" + (cell.source.trim() ? "" : " empty");
+  preview.innerHTML = cell.source.trim() ? markdownToHtml(cell.source) : "Empty markdown cell — click to edit.";
+  preview.onclick = () => editMarkdownCell(cellId);
+  if (old) old.replaceWith(preview); else body.appendChild(preview);
+}
+
+function renderCellOutputInto(el, outputs) {
+  el.innerHTML = "";
+  outputs.forEach((o) => {
+    if (o.kind === "stdout" || o.kind === "stderr" || o.kind === "result") {
+      const div = document.createElement("div");
+      div.className = "console-line " + o.kind;
+      div.textContent = o.kind === "result" ? "=> " + o.text : o.text;
+      el.appendChild(div);
+    } else if (o.kind === "image") {
+      const img = document.createElement("img"); img.src = o.dataUrl; el.appendChild(img);
+    } else if (o.kind === "html") {
+      const div = document.createElement("div");
+      div.className = "console-html-block";
+      div.innerHTML = sanitizeHtml(o.html);
+      el.appendChild(div);
+      enhanceTable(div);
+    } else if (o.kind === "error") {
+      const div = document.createElement("div");
+      div.className = "error-box"; div.style.margin = "6px 0 0";
+      div.textContent = o.text;
+      el.appendChild(div);
+    }
+  });
+}
+function appendCellOutput(cellId, output) {
+  const cell = notebookCells.find((c) => c.id === cellId);
+  if (!cell) return;
+  cell.outputs.push(output);
+  const el = document.getElementById("cellout-" + cellId);
+  if (el) renderCellOutputInto(el, cell.outputs);
+}
+function setCellRunningUi(cellId, running) {
+  const cellEl = notebookHostEl().querySelector(`[data-cell-id="${cellId}"]`);
+  const btn = cellEl && cellEl.querySelector(".nb-run");
+  if (btn) btn.classList.toggle("running", running);
+}
+function runCell(cellId) {
+  const cell = notebookCells.find((c) => c.id === cellId);
+  if (!cell || cell.type !== "code" || !runtimeReady) return Promise.resolve();
+  if (cellViews[cellId]) cell.source = cellViews[cellId].state.doc.toString();
+  cell.outputs = [];
+  const el = document.getElementById("cellout-" + cellId);
+  if (el) el.innerHTML = "";
+  setCellRunningUi(cellId, true);
+  worker.postMessage({ type: "run-cell", cellId, code: cell.source, files: flattenFiles() });
+  return new Promise((resolve) => { cellRunResolvers[cellId] = resolve; });
+}
+function onCellDone(cellId, result, resultHtml) {
+  const cell = notebookCells.find((c) => c.id === cellId);
+  if (cell) {
+    cell.execCount = ++cellExecCounter;
+    if (resultHtml) appendCellOutput(cellId, { kind: "html", html: resultHtml });
+    else if (result !== null && result !== undefined) appendCellOutput(cellId, { kind: "result", text: result });
+    const execEl = notebookHostEl().querySelector(`[data-cell-id="${cellId}"] .nb-exec-count`);
+    if (execEl) execEl.textContent = `[${cell.execCount}]`;
+  }
+  setCellRunningUi(cellId, false);
+  if (cellRunResolvers[cellId]) { cellRunResolvers[cellId](); delete cellRunResolvers[cellId]; }
+}
+function onCellError(cellId, message) {
+  appendCellOutput(cellId, { kind: "error", text: formatTraceback(message) });
+  setCellRunningUi(cellId, false);
+  if (cellRunResolvers[cellId]) { cellRunResolvers[cellId](); delete cellRunResolvers[cellId]; }
+}
+function focusCell(cellId) { if (cellViews[cellId]) cellViews[cellId].focus(); }
+async function runCellAndAdvance(cellId) {
+  await runCell(cellId);
+  const idx = notebookCells.findIndex((c) => c.id === cellId);
+  if (idx === notebookCells.length - 1) addCell(cellId, "code");
+  else focusCell(notebookCells[idx + 1].id);
+}
+async function runAllCells() {
+  if (!runtimeReady) return;
+  for (const cell of notebookCells) if (cell.type === "code") await runCell(cell.id);
+}
+function restartAndRunAll() {
+  restartRuntime("— restarting runtime for Run All —");
+  const check = setInterval(() => {
+    if (runtimeReady) { clearInterval(check); runAllCells(); }
+  }, 200);
+}
+function addCell(afterId, type) {
+  syncNotebookCellSources();
+  const idx = afterId ? notebookCells.findIndex((c) => c.id === afterId) : notebookCells.length - 1;
+  const newCell = { id: newCellId(), type, source: "", outputs: [], execCount: null };
+  notebookCells.splice(idx + 1, 0, newCell);
+  renderNotebook();
+  if (type === "code") focusCell(newCell.id);
+}
+function deleteCell(cellId) {
+  syncNotebookCellSources();
+  if (notebookCells.length <= 1) return;
+  notebookCells = notebookCells.filter((c) => c.id !== cellId);
+  renderNotebook();
+}
+function moveCell(cellId, dir) {
+  syncNotebookCellSources();
+  const idx = notebookCells.findIndex((c) => c.id === cellId);
+  const swapIdx = idx + dir;
+  if (swapIdx < 0 || swapIdx >= notebookCells.length) return;
+  [notebookCells[idx], notebookCells[swapIdx]] = [notebookCells[swapIdx], notebookCells[idx]];
+  renderNotebook();
+}
+function setCellType(cellId, type) {
+  syncNotebookCellSources();
+  const cell = notebookCells.find((c) => c.id === cellId);
+  if (!cell || cell.type === type) return;
+  cell.type = type; cell.outputs = []; cell.execCount = null;
+  renderNotebook();
+}
+function createNewNotebook() {
+  const name = prompt("New notebook name:", "notebook.ipynb");
+  if (!name) return;
+  const finalName = /\.ipynb$/i.test(name) ? name : name + ".ipynb";
+  const p = uniquePath("", finalName);
+  const emptyNb = JSON.stringify({ cells: [{ cell_type: "code", metadata: {}, execution_count: null, outputs: [], source: [] }], metadata: { kernelspec: { name: "python3", display_name: "Python 3" } }, nbformat: 4, nbformat_minor: 5 });
+  fileTree.children.push({ type: "file", name: finalName, path: p, content: emptyNb });
+  renderFileTree();
+  openFile(p);
+}
+document.getElementById("nbRunAll").onclick = runAllCells;
+document.getElementById("nbRestartRunAll").onclick = restartAndRunAll;
+document.getElementById("nbAddCode").onclick = () => addCell(notebookCells[notebookCells.length - 1] ? notebookCells[notebookCells.length - 1].id : null, "code");
+document.getElementById("nbAddMarkdown").onclick = () => addCell(notebookCells[notebookCells.length - 1] ? notebookCells[notebookCells.length - 1].id : null, "markdown");
+document.getElementById("nbClearOutputs").onclick = () => { notebookCells.forEach((c) => { c.outputs = []; c.execCount = null; }); renderNotebook(); };
+
+/* =================================================================
+   EXPORT REPORT (self-contained HTML page with a Print/Save-as-PDF
+   button — the browser's native print-to-PDF is far more reliable than
+   a bundled PDF library, and needs no extra dependency or CDN).
+================================================================= */
+function buildReportHtml(title, sections) {
+  const body = sections.map((s) => `<section><h2>${escapeHtml(s.heading)}</h2>${s.bodyHtml}</section>`).join("\n");
+  const downloadName = title.replace(/[^\w.-]+/g, "_") + "-report.html";
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${escapeHtml(title)} — KVPy report</title>
+<style>
+  body{ margin:0; padding:32px 40px 60px; background:#F6F4EF; color:#2B2620; font-family:-apple-system,Segoe UI,Roboto,sans-serif; }
+  h1{ font-size:20px; margin:0 0 4px; }
+  .meta{ color:#6E6656; font-size:12px; margin-bottom:28px; font-family:ui-monospace,monospace; }
+  section{ margin-bottom:32px; }
+  h2{ font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:#B9822C; border-bottom:1px solid #DAD3C4; padding-bottom:8px; }
+  pre.code-block{ background:#FFFFFF; border:1px solid #DAD3C4; border-radius:6px; padding:14px 16px; overflow-x:auto; font-family:ui-monospace,monospace; font-size:12.5px; white-space:pre-wrap; word-break:break-word; }
+  .console-line{ font-family:ui-monospace,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; }
+  .console-line.stderr, .error-box{ color:#B5432E; }
+  .console-line.result{ color:#2E7C71; }
+  table{ border-collapse:collapse; font-family:ui-monospace,monospace; font-size:11.5px; width:100%; }
+  th, td{ padding:6px 10px; border-bottom:1px solid #DAD3C4; text-align:left; }
+  th{ background:#EEEAE0; color:#2E7C71; }
+  img{ max-width:100%; border:1px solid #DAD3C4; border-radius:6px; }
+  .report-actions{ position:sticky; top:0; background:#F6F4EF; padding:10px 0 18px; display:flex; gap:10px; }
+  .report-actions button{ font-family:ui-monospace,monospace; font-size:12px; padding:7px 14px; border-radius:6px; border:1px solid #DAD3C4; background:#FFFFFF; cursor:pointer; }
+  @media print{ .report-actions{ display:none; } body{ padding:0 24px; background:#fff; } }
+</style>
+</head>
+<body>
+  <div class="report-actions">
+    <button onclick="window.print()">🖨 Print / Save as PDF</button>
+    <button id="dlBtn">⬇ Download this report as .html</button>
+  </div>
+  <h1>${escapeHtml(title)}</h1>
+  <div class="meta">Generated by KVPy · ${new Date().toLocaleString()}</div>
+  ${body}
+  <script>
+    document.getElementById('dlBtn').onclick = function(){
+      var blob = new Blob([document.documentElement.outerHTML], {type:'text/html'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = ${JSON.stringify(downloadName)};
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+  <\/script>
+</body>
+</html>`;
+}
+function openReportWindow(html) {
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank");
+  if (!win) alert("Your browser blocked the report popup — allow popups for this page and try again.");
+}
+function exportTerminalReport() {
+  saveActiveFileFromEditor();
+  const node = findNode(activeFilePath);
+  const sections = [
+    { heading: "Source — " + activeFilePath, bodyHtml: `<pre class="code-block">${escapeHtml(node ? node.content : "")}</pre>` },
+    { heading: "Terminal", bodyHtml: terminalView.innerHTML || "<p><em>No terminal output yet.</em></p>" },
+    { heading: "Output", bodyHtml: outputView.innerHTML || "<p><em>No rich output yet.</em></p>" },
+  ];
+  openReportWindow(buildReportHtml(activeFilePath, sections));
+}
+function exportNotebookReport() {
+  saveActiveFileFromEditor();
+  const sections = notebookCells.map((c, i) => {
+    if (c.type === "markdown") return { heading: `Cell ${i + 1} · Markdown`, bodyHtml: c.source.trim() ? markdownToHtml(c.source) : "<p><em>Empty</em></p>" };
+    const outEl = document.createElement("div");
+    renderCellOutputInto(outEl, c.outputs);
+    return { heading: `Cell ${i + 1} · Code${c.execCount ? " · [" + c.execCount + "]" : ""}`, bodyHtml: `<pre class="code-block">${escapeHtml(c.source)}</pre>${outEl.innerHTML}` };
+  });
+  openReportWindow(buildReportHtml(activeFilePath, sections));
+}
+function exportReport() {
+  if (notebookMode && isNotebookPath(activeFilePath)) exportNotebookReport();
+  else exportTerminalReport();
+}
+
+/* =================================================================
+   LINTING (pyflakes, runs in the background as you type)
+================================================================= */
+let lintDebounceTimer = null;
+function scheduleLint() {
+  clearTimeout(lintDebounceTimer);
+  if (!settings.lintEnabled || !runtimeReady || !/\.py$/i.test(activeFilePath)) return;
+  lintDebounceTimer = setTimeout(runLint, 700);
+}
+async function runLint() {
+  if (!settings.lintEnabled || !runtimeReady || !/\.py$/i.test(activeFilePath)) return;
+  const code = view.state.doc.toString();
+  const filePathAtRequest = activeFilePath;
+  const result = await workerRpc("lint", { code });
+  if (!result || !Array.isArray(result.messages) || activeFilePath !== filePathAtRequest) return;
+  const total = view.state.doc.lines;
+  lintDiagnostics = result.messages.map((m) => {
+    const lineNo = Math.min(Math.max(1, m.line || 1), total);
+    const line = view.state.doc.line(lineNo);
+    const from = Math.min(line.from + Math.max(0, m.col || 0), line.to);
+    return { from, to: line.to, severity: m.severity === "error" ? "error" : "warning", message: m.message, source: "pyflakes" };
+  });
+  forceLinting(view);
+}
+
+/* =================================================================
    PYODIDE WORKER
 ================================================================= */
 const PYODIDE_VERSION = "v0.29.0";
 const workerSource = `
 importScripts("https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/pyodide.js");
 let pyodide = null;
+self.currentExecTarget = { kind: "terminal" };
 let ready = (async () => {
   pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/" });
-  pyodide.setStdout({ batched: (s) => postMessage({ type: "stdout", text: s }) });
-  pyodide.setStderr({ batched: (s) => postMessage({ type: "stderr", text: s }) });
+  pyodide.setStdout({ batched: (s) => postMessage({ type: "stdout", text: s, execTarget: self.currentExecTarget }) });
+  pyodide.setStderr({ batched: (s) => postMessage({ type: "stderr", text: s, execTarget: self.currentExecTarget }) });
   pyodide.runPython("import sys\\nif '/' not in sys.path: sys.path.insert(0, '/')");
   postMessage({ type: "ready", version: pyodide.runPython("import sys; sys.version") });
 })().catch((err) => postMessage({ type: "boot-error", message: String(err) }));
@@ -1192,7 +1864,13 @@ try:
             _fig.savefig(_buf, format="png", bbox_inches="tight", dpi=110)
             _buf.seek(0)
             _data = _b64_internal.b64encode(_buf.read()).decode("ascii")
-            _js_internal.postMessage(_to_js_internal({"type": "image", "dataUrl": "data:image/png;base64," + _data}, dict_converter=_js_internal.Object.fromEntries))
+            _payload = {"type": "image", "dataUrl": "data:image/png;base64," + _data}
+            try:
+                if getattr(_js_internal.currentExecTarget, "kind", "terminal") == "cell":
+                    _payload["cellId"] = _js_internal.currentExecTarget.cellId
+            except Exception:
+                pass
+            _js_internal.postMessage(_to_js_internal(_payload, dict_converter=_js_internal.Object.fromEntries))
         _plt_internal.close("all")
     _plt_internal.show = _patched_show
 except Exception:
@@ -1278,8 +1956,183 @@ def _dbg_run(code, filename, project_files):
     return _json_dbg.dumps({"events": events, "error": err, "truncated": len(events) >= MAX_EVENTS})
 \`;
 
+/* ---- lazy installers for optional coding-quality tools ---- */
+let jediReady = false, jediInstallPromise = null;
+async function ensureJedi() {
+  if (jediReady) return true;
+  if (jediInstallPromise) return jediInstallPromise;
+  jediInstallPromise = (async () => {
+    try {
+      await pyodide.loadPackage("micropip");
+      const micropip = pyodide.pyimport("micropip");
+      await micropip.install("jedi");
+      jediReady = true;
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      jediInstallPromise = null;
+    }
+  })();
+  return jediInstallPromise;
+}
+
+let pyflakesReady = false, pyflakesInstallPromise = null;
+async function ensurePyflakes() {
+  if (pyflakesReady) return true;
+  if (pyflakesInstallPromise) return pyflakesInstallPromise;
+  pyflakesInstallPromise = (async () => {
+    try {
+      await pyodide.loadPackage("micropip");
+      const micropip = pyodide.pyimport("micropip");
+      await micropip.install("pyflakes");
+      pyflakesReady = true;
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      pyflakesInstallPromise = null;
+    }
+  })();
+  return pyflakesInstallPromise;
+}
+
+const formatterReady = { autopep8: false, black: false };
+const formatterInstallPromise = { autopep8: null, black: null };
+async function ensureFormatter(name) {
+  if (formatterReady[name]) return true;
+  if (formatterInstallPromise[name]) return formatterInstallPromise[name];
+  formatterInstallPromise[name] = (async () => {
+    try {
+      await pyodide.loadPackage("micropip");
+      const micropip = pyodide.pyimport("micropip");
+      await micropip.install(name);
+      formatterReady[name] = true;
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      formatterInstallPromise[name] = null;
+    }
+  })();
+  return formatterInstallPromise[name];
+}
+
 self.onmessage = async (e) => {
   const msg = e.data;
+  if (msg.type === "run-cell") {
+    self.currentExecTarget = { kind: "cell", cellId: msg.cellId };
+    try {
+      await ready;
+      writeFiles(msg.files || {});
+      try { await pyodide.loadPackagesFromImports(msg.code); } catch (impErr) {}
+      await maybePatchMatplotlib(msg.code);
+      const result = await pyodide.runPythonAsync(msg.code);
+      let resultText = null, resultHtml = null;
+      if (result !== undefined && result !== null) {
+        if (typeof result === "object" && typeof result._repr_html_ === "function") {
+          try { resultHtml = result._repr_html_(); } catch (e) {}
+        }
+        try { resultText = String(result); } catch (e) { resultText = null; }
+        if (result && typeof result.destroy === "function") { try { result.destroy(); } catch (e) {} }
+      }
+      postMessage({ type: "cell-done", cellId: msg.cellId, result: resultText, resultHtml });
+    } catch (err) {
+      postMessage({ type: "cell-error", cellId: msg.cellId, message: (err && err.message) ? err.message : String(err) });
+    } finally {
+      self.currentExecTarget = { kind: "terminal" };
+    }
+    return;
+  }
+  if (msg.type === "complete") {
+    try {
+      const ok = await ensureJedi();
+      if (!ok) { postMessage({ type: "complete-result", requestId: msg.requestId, completions: [] }); return; }
+      pyodide.globals.set("__complete_code__", msg.code);
+      pyodide.globals.set("__complete_line__", msg.line);
+      pyodide.globals.set("__complete_col__", msg.column);
+      const raw = pyodide.runPython(\`
+import json as _json_cmp
+try:
+    import jedi as _jedi_cmp
+    _script_cmp = _jedi_cmp.Script(code=__complete_code__)
+    _comps_cmp = _script_cmp.complete(line=__complete_line__, column=__complete_col__)
+    _out_cmp = []
+    for _c in _comps_cmp[:50]:
+        try:
+            _sigs = _c.get_signatures()
+            _sig = _sigs[0].to_string() if _sigs else ""
+        except Exception:
+            _sig = ""
+        _out_cmp.append({"name": _c.name, "type": _c.type, "sig": _sig})
+    _json_cmp.dumps(_out_cmp)
+except Exception:
+    _json_cmp.dumps([])
+\`);
+      postMessage({ type: "complete-result", requestId: msg.requestId, completions: JSON.parse(raw) });
+    } catch (err) {
+      postMessage({ type: "complete-result", requestId: msg.requestId, completions: [] });
+    }
+    return;
+  }
+  if (msg.type === "lint") {
+    try {
+      const ok = await ensurePyflakes();
+      if (!ok) { postMessage({ type: "lint-result", requestId: msg.requestId, messages: [] }); return; }
+      pyodide.globals.set("__lint_code__", msg.code);
+      const raw = pyodide.runPython(\`
+import ast as _ast_lint, json as _json_lint
+def _run_pyflakes_lint(src):
+    results = []
+    try:
+        tree = _ast_lint.parse(src)
+    except SyntaxError as e:
+        results.append({"line": e.lineno or 1, "col": (e.offset or 1) - 1, "message": str(e.msg), "severity": "error"})
+        return _json_lint.dumps(results)
+    try:
+        from pyflakes.checker import Checker as _Checker_lint
+        _checker = _Checker_lint(tree, filename="<editor>")
+        for _m in _checker.messages:
+            try:
+                _text = _m.message % _m.message_args
+            except Exception:
+                _text = str(_m)
+            results.append({"line": _m.lineno, "col": getattr(_m, "col", 0), "message": _text, "severity": "warning"})
+    except Exception:
+        pass
+    return _json_lint.dumps(results)
+_run_pyflakes_lint(__lint_code__)
+\`);
+      postMessage({ type: "lint-result", requestId: msg.requestId, messages: JSON.parse(raw) });
+    } catch (err) {
+      postMessage({ type: "lint-result", requestId: msg.requestId, messages: [] });
+    }
+    return;
+  }
+  if (msg.type === "format") {
+    try {
+      if (msg.formatter !== "black" && msg.formatter !== "autopep8") { postMessage({ type: "format-result", requestId: msg.requestId, error: "no-formatter" }); return; }
+      const ok = await ensureFormatter(msg.formatter);
+      if (!ok) { postMessage({ type: "format-result", requestId: msg.requestId, error: "install-failed" }); return; }
+      pyodide.globals.set("__format_code__", msg.code);
+      let formatted;
+      if (msg.formatter === "black") {
+        formatted = pyodide.runPython(\`
+import black as _black_fmt
+_black_fmt.format_str(__format_code__, mode=_black_fmt.Mode())
+\`);
+      } else {
+        formatted = pyodide.runPython(\`
+import autopep8 as _autopep8_fmt
+_autopep8_fmt.fix_code(__format_code__)
+\`);
+      }
+      postMessage({ type: "format-result", requestId: msg.requestId, formatted: String(formatted) });
+    } catch (err) {
+      postMessage({ type: "format-result", requestId: msg.requestId, error: (err && err.message) ? err.message : String(err) });
+    }
+    return;
+  }
   if (msg.type === "install") {
     try {
       await pyodide.loadPackage(msg.name);
@@ -1333,35 +2186,80 @@ self.onmessage = async (e) => {
 };
 `;
 
-let worker = null, runtimeReady = false, isRunning = false, runStartTime = 0;
+let worker = null, isRunning = false, runStartTime = 0;
 const btnRun = document.getElementById("btnRun"), btnStop = document.getElementById("btnStop"), btnDebug = document.getElementById("btnDebug");
 const bootScreen = document.getElementById("bootScreen");
 const statusRuntime = document.getElementById("statusRuntime");
 function setRuntimeStatus(kind, label) { statusRuntime.className = "status " + kind; statusRuntime.innerHTML = `<span class="status-dot"></span>${label}`; }
 
+/* Generic request/response bridge for one-off worker queries (autocomplete,
+   lint, format) that run alongside Run/Debug rather than instead of them. */
+let rpcCounter = 0;
+const pendingRpc = new Map();
+function workerRpc(type, payload, timeoutMs = 8000) {
+  return new Promise((resolve) => {
+    if (!worker) { resolve(null); return; }
+    const requestId = ++rpcCounter;
+    const timer = setTimeout(() => { pendingRpc.delete(requestId); resolve(null); }, timeoutMs);
+    pendingRpc.set(requestId, (data) => { clearTimeout(timer); resolve(data); });
+    worker.postMessage({ type, requestId, ...payload });
+  });
+}
+function resolveRpc(requestId, data) {
+  const cb = pendingRpc.get(requestId);
+  if (cb) { pendingRpc.delete(requestId); cb(data); }
+}
+
+let bootTimeoutTimer = null;
 function spawnWorker() {
   const blob = new Blob([workerSource], { type: "application/javascript" });
   worker = new Worker(URL.createObjectURL(blob));
   worker.onmessage = onWorkerMessage;
   worker.onerror = (e) => { appendTerm("sys", "Worker error: " + e.message); setRuntimeStatus("err", "Runtime error"); };
+  clearTimeout(bootTimeoutTimer);
+  bootTimeoutTimer = setTimeout(() => {
+    if (runtimeReady) return;
+    const bootMsg = document.querySelector("#bootScreen span");
+    if (bootMsg) {
+      bootMsg.innerHTML = `Still loading Python (this can take a while on a slow connection)…<br>
+        <span style="font-size:11px;opacity:.8;">If this doesn't finish, your network may be blocking <code>cdn.jsdelivr.net</code> (Pyodide's download source).</span><br>
+        <button class="ghost" id="bootRetryBtn" style="margin-top:14px;">Retry</button>`;
+      const retryBtn = document.getElementById("bootRetryBtn");
+      if (retryBtn) retryBtn.onclick = () => { bootMsg.innerHTML = "Booting Python runtime<span class=\"dots\"></span>"; restartRuntime("— retrying —"); };
+    }
+  }, 20000);
 }
 
 function onWorkerMessage(e) {
   const msg = e.data;
   switch (msg.type) {
     case "ready":
+      clearTimeout(bootTimeoutTimer);
       runtimeReady = true; btnRun.disabled = false; btnDebug.disabled = false; setRuntimeStatus("ok", "Python ready");
       bootScreen.classList.add("hidden"); setTimeout(() => (bootScreen.style.display = "none"), 300);
       document.getElementById("setPyVersion").textContent = (msg.version || "Pyodide " + PYODIDE_VERSION).split("\n")[0];
+      scheduleLint();
       break;
     case "boot-error":
+      clearTimeout(bootTimeoutTimer);
       setRuntimeStatus("err", "Failed to load runtime");
       appendTerm("stderr", "Failed to load Pyodide: " + msg.message);
       bootScreen.classList.add("hidden");
       break;
-    case "stdout": appendTerm("stdout", msg.text); break;
-    case "stderr": appendTerm("stderr", msg.text); break;
-    case "image": appendOutputImage(msg.dataUrl); break;
+    case "stdout":
+      if (msg.execTarget && msg.execTarget.kind === "cell") appendCellOutput(msg.execTarget.cellId, { kind: "stdout", text: msg.text });
+      else appendTerm("stdout", msg.text);
+      break;
+    case "stderr":
+      if (msg.execTarget && msg.execTarget.kind === "cell") appendCellOutput(msg.execTarget.cellId, { kind: "stderr", text: msg.text });
+      else appendTerm("stderr", msg.text);
+      break;
+    case "image":
+      if (msg.cellId) appendCellOutput(msg.cellId, { kind: "image", dataUrl: msg.dataUrl });
+      else appendOutputImage(msg.dataUrl);
+      break;
+    case "cell-done": onCellDone(msg.cellId, msg.result, msg.resultHtml); break;
+    case "cell-error": onCellError(msg.cellId, msg.message); break;
     case "done": {
       isRunning = false; updateRunButtons();
       const elapsed = Math.round(performance.now() - runStartTime);
@@ -1393,6 +2291,9 @@ function onWorkerMessage(e) {
     }
     case "package-status": updatePackageRowStatus(msg.name, msg.status); break;
     case "restarted": break;
+    case "complete-result": resolveRpc(msg.requestId, { completions: msg.completions || [] }); break;
+    case "lint-result": resolveRpc(msg.requestId, { messages: msg.messages || [] }); break;
+    case "format-result": resolveRpc(msg.requestId, { formatted: msg.formatted, error: msg.error }); break;
   }
 }
 function updateRunButtons() { btnRun.disabled = isRunning || !runtimeReady || debugging; btnDebug.disabled = isRunning || !runtimeReady || debugging; btnStop.disabled = !isRunning; }
@@ -1428,8 +2329,8 @@ function scanInputsThen(cb) {
   if (matches.length === 0) { cb([]); return; }
   openInputModal(code, matches.length, cb);
 }
-function runCode() { if (!runtimeReady || isRunning || debugging) return; scanInputsThen(doRun); }
-function debugCode() { if (!runtimeReady || isRunning || debugging) return; scanInputsThen(doDebug); }
+function runCode() { if (notebookMode || !runtimeReady || isRunning || debugging) return; scanInputsThen(doRun); }
+function debugCode() { if (notebookMode || !runtimeReady || isRunning || debugging) return; scanInputsThen(doDebug); }
 btnRun.onclick = runCode;
 btnDebug.onclick = debugCode;
 
@@ -1451,7 +2352,9 @@ spawnWorker();
 document.addEventListener("keydown", (e) => {
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.key === "Enter") { e.preventDefault(); runCode(); }
-  else if (mod && (e.key === "s" || e.key === "S")) { e.preventDefault(); saveFile(); }
+  else if (mod && (e.key === "s" || e.key === "S")) { e.preventDefault(); saveFileWithFormatting(); }
+  else if (mod && e.shiftKey && (e.key === "P" || e.key === "p")) { e.preventDefault(); openCommandPalette(); }
+  else if (e.shiftKey && e.altKey && (e.key === "F" || e.key === "f")) { e.preventDefault(); formatActiveFile(true); }
 });
 
 /* =================================================================
@@ -1665,6 +2568,31 @@ function applyAutoSave(on) {
   if (on) autoSaveTimer = setInterval(() => saveProjectToStorage(true), 20000);
 }
 
+/* =================================================================
+   FORMATTING (autopep8 / black, on demand or on save)
+================================================================= */
+async function formatActiveFile(announce) {
+  if (settings.formatter === "none") return false;
+  if (!/\.py$/i.test(activeFilePath)) return false;
+  if (!runtimeReady) { if (announce) appendTerm("sys", "(formatter needs the runtime to finish loading)"); return false; }
+  const code = view.state.doc.toString();
+  if (announce) setRuntimeStatus("busy", `Formatting with ${settings.formatter}…`);
+  const result = await workerRpc("format", { code, formatter: settings.formatter }, 20000);
+  if (runtimeReady) setRuntimeStatus("ok", "Python ready");
+  if (!result || result.error) {
+    if (announce) appendTerm("sys fail", `— format failed${result && result.error ? ": " + result.error : " (couldn't install " + settings.formatter + ")"} —`);
+    return false;
+  }
+  if (typeof result.formatted === "string" && result.formatted !== code) {
+    const sel = view.state.selection.main.head;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: result.formatted }, selection: { anchor: Math.min(sel, result.formatted.length) } });
+    if (announce) appendTerm("sys ok", `— formatted with ${settings.formatter} —`);
+    return true;
+  }
+  if (announce) appendTerm("sys", "(already formatted)");
+  return false;
+}
+
 function saveFile() {
   saveActiveFileFromEditor();
   const node = findNode(activeFilePath);
@@ -1675,7 +2603,14 @@ function saveFile() {
   statusFile.textContent = "Saved " + node.name;
   setTimeout(() => (statusFile.textContent = original), 1500);
 }
-document.getElementById("btnSave").onclick = saveFile;
+async function saveFileWithFormatting() {
+  if (settings.formatOnSave && settings.formatter !== "none" && /\.py$/i.test(activeFilePath)) {
+    await formatActiveFile(false);
+    saveActiveFileFromEditor();
+  }
+  saveFile();
+}
+document.getElementById("btnSave").onclick = saveFileWithFormatting;
 
 /* =================================================================
    MENU BAR
@@ -1683,12 +2618,14 @@ document.getElementById("btnSave").onclick = saveFile;
 const menuDefs = {
   file: [
     { label: "New File", action: () => document.getElementById("btnNewFile").click() },
+    { label: "New Notebook", action: createNewNotebook },
     { label: "New Folder", action: () => document.getElementById("btnNewFolder").click() },
     { label: "Upload Files…", action: () => uploadInput.click() },
     { divider: true },
-    { label: "Save Active File", action: saveFile, sc: "Ctrl+S" },
+    { label: "Save Active File", action: saveFileWithFormatting, sc: "Ctrl+S" },
     { label: "💾 Save Project (browser storage)", action: () => saveProjectToStorage(false) },
     { label: "⬇ Download ZIP", action: downloadZip },
+    { label: "Export Report (HTML / Print to PDF)", action: exportReport },
     { divider: true },
     { label: "Import .zip / .ipynb / .py…", action: () => uploadInput.click() },
     { label: "Export as .ipynb", action: exportActiveAsIpynb },
@@ -1700,9 +2637,13 @@ const menuDefs = {
     { label: "Find", action: () => openSearchPanel(view), sc: "Ctrl+F" },
     { label: "Find & Replace", action: () => openSearchPanel(view), sc: "Ctrl+H" },
     { divider: true },
+    { label: "Format Document", action: () => formatActiveFile(true), sc: "Shift+Alt+F" },
+    { label: "Toggle Breakpoint (current line)", action: toggleBreakpointAtCursor },
+    { divider: true },
     { label: "Select All", action: () => view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } }) },
   ],
   view: [
+    { label: "Command Palette", action: openCommandPalette, sc: "Ctrl+Shift+P" },
     { label: "Toggle Theme", action: toggleTheme },
     { label: "Toggle Word Wrap", action: toggleWrap },
     { label: "Toggle Minimap", action: () => setMinimap(!document.getElementById("minimapHost").classList.contains("on")) },
@@ -1726,6 +2667,7 @@ const menuDefs = {
   ],
 };
 function exportActiveAsIpynb() {
+  if (isNotebookPath(activeFilePath)) { alert("This file is already a notebook — use Download from the sidebar (⤓) or Download ZIP instead."); return; }
   saveActiveFileFromEditor();
   const node = findNode(activeFilePath);
   const nb = { cells: [{ cell_type: "code", metadata: {}, execution_count: null, outputs: [], source: node.content.split("\n").map((l, i, arr) => i < arr.length - 1 ? l + "\n" : l) }], metadata: { kernelspec: { name: "python3", display_name: "Python 3" } }, nbformat: 4, nbformat_minor: 5 };
@@ -1733,6 +2675,84 @@ function exportActiveAsIpynb() {
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = node.name.replace(/\.py$/, "") + ".ipynb";
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
+
+/* =================================================================
+   COMMAND PALETTE (Ctrl+Shift+P) — fuzzy search over every menu action
+================================================================= */
+function buildCommandList() {
+  const cmds = [];
+  Object.entries(menuDefs).forEach(([group, items]) => {
+    items.forEach((item) => { if (!item.divider) cmds.push({ group, label: item.label, sc: item.sc, action: item.action }); });
+  });
+  return cmds;
+}
+function fuzzyScore(query, text) {
+  query = query.toLowerCase(); text = text.toLowerCase();
+  if (!query) return 1;
+  let qi = 0, score = 0, consecutive = 0;
+  for (let i = 0; i < text.length && qi < query.length; i++) {
+    if (text[i] === query[qi]) { qi++; score += 1 + consecutive; consecutive++; } else { consecutive = 0; }
+  }
+  return qi === query.length ? score : -1;
+}
+
+const cmdPaletteModal = document.getElementById("cmdPaletteModal");
+const cmdPaletteInput = document.getElementById("cmdPaletteInput");
+const cmdPaletteList = document.getElementById("cmdPaletteList");
+let cmdPaletteResults = [];
+let cmdPaletteSelected = 0;
+
+function openCommandPalette() {
+  cmdPaletteInput.value = "";
+  renderCommandPalette("");
+  cmdPaletteModal.classList.add("open");
+  setTimeout(() => cmdPaletteInput.focus(), 0);
+}
+function closeCommandPalette() { cmdPaletteModal.classList.remove("open"); }
+function renderCommandPalette(query) {
+  const all = buildCommandList();
+  cmdPaletteResults = all
+    .map((c) => ({ cmd: c, score: fuzzyScore(query, c.group + " " + c.label) }))
+    .filter((r) => r.score >= 0)
+    .sort((a, b) => b.score - a.score)
+    .map((r) => r.cmd);
+  cmdPaletteSelected = 0;
+  if (!cmdPaletteResults.length) {
+    cmdPaletteList.innerHTML = `<div class="cmd-empty">No matching commands.</div>`;
+    return;
+  }
+  cmdPaletteList.innerHTML = cmdPaletteResults.map((c, i) => `
+    <div class="cmd-row${i === 0 ? " sel" : ""}" data-idx="${i}">
+      <span class="cmd-group">${escapeHtml(c.group)}</span>
+      <span class="cmd-label">${escapeHtml(c.label)}</span>
+      ${c.sc ? `<span class="cmd-sc">${escapeHtml(c.sc)}</span>` : ""}
+    </div>`).join("");
+}
+function highlightCommandRow(idx) {
+  cmdPaletteSelected = idx;
+  cmdPaletteList.querySelectorAll(".cmd-row").forEach((row, i) => row.classList.toggle("sel", i === idx));
+  const active = cmdPaletteList.querySelector(".cmd-row.sel");
+  if (active) active.scrollIntoView({ block: "nearest" });
+}
+function runSelectedCommand() {
+  const cmd = cmdPaletteResults[cmdPaletteSelected];
+  if (!cmd) return;
+  closeCommandPalette();
+  cmd.action();
+}
+cmdPaletteInput.addEventListener("input", (e) => renderCommandPalette(e.target.value));
+cmdPaletteInput.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown") { e.preventDefault(); if (cmdPaletteResults.length) highlightCommandRow(Math.min(cmdPaletteSelected + 1, cmdPaletteResults.length - 1)); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); if (cmdPaletteResults.length) highlightCommandRow(Math.max(cmdPaletteSelected - 1, 0)); }
+  else if (e.key === "Enter") { e.preventDefault(); runSelectedCommand(); }
+  else if (e.key === "Escape") { e.preventDefault(); closeCommandPalette(); }
+});
+cmdPaletteList.addEventListener("click", (e) => {
+  const row = e.target.closest(".cmd-row"); if (!row) return;
+  cmdPaletteSelected = parseInt(row.dataset.idx, 10);
+  runSelectedCommand();
+});
+cmdPaletteModal.addEventListener("click", (e) => { if (e.target === cmdPaletteModal) closeCommandPalette(); });
 
 const menubar = document.getElementById("menubar");
 const menuDropdown = document.getElementById("menuDropdown");
@@ -1765,7 +2785,6 @@ document.addEventListener("click", (e) => { if (openMenuKey && !e.target.closest
 /* =================================================================
    SETTINGS
 ================================================================= */
-const settings = { clearOnRun: false };
 const settingsModal = document.getElementById("settingsModal");
 document.getElementById("btnSettings").onclick = () => settingsModal.classList.add("open");
 document.getElementById("settingsClose").onclick = () => settingsModal.classList.remove("open");
@@ -1782,9 +2801,20 @@ document.getElementById("setMinimap").onchange = (e) => setMinimap(e.target.chec
 document.getElementById("setAutoSave").onchange = (e) => applyAutoSave(e.target.checked);
 document.getElementById("setTermFontSize").onchange = (e) => setTermFontSize(parseFloat(e.target.value) || 12.5);
 document.getElementById("setClearOnRun").onchange = (e) => { settings.clearOnRun = e.target.checked; };
+document.getElementById("setJediEnabled").onchange = (e) => { settings.jediEnabled = e.target.checked; };
+document.getElementById("setLintEnabled").onchange = (e) => {
+  settings.lintEnabled = e.target.checked;
+  if (!settings.lintEnabled) { lintDiagnostics = []; forceLinting(view); } else scheduleLint();
+};
+document.getElementById("setFormatter").onchange = (e) => { settings.formatter = e.target.value; };
+document.getElementById("setFormatOnSave").onchange = (e) => { settings.formatOnSave = e.target.checked; };
 
 document.getElementById("setFontSize").value = fontSize;
 document.getElementById("setTermFontSize").value = 12.5;
+document.getElementById("setJediEnabled").checked = settings.jediEnabled;
+document.getElementById("setLintEnabled").checked = settings.lintEnabled;
+document.getElementById("setFormatter").value = settings.formatter;
+document.getElementById("setFormatOnSave").checked = settings.formatOnSave;
 applyAutoSave(true);
 
 /* =================================================================
