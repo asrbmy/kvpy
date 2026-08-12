@@ -691,7 +691,9 @@ async function jediCompletionSource(context) {
   if (word.from === word.to && !context.explicit) return null;
   const line = context.state.doc.lineAt(context.pos);
   const payload = { code: context.state.doc.toString(), line: line.number, column: context.pos - line.from };
-  const result = await workerRpc("complete", payload, 6000);
+  // Generous timeout: the very first call may need to install Jedi via micropip
+  // (several seconds on a slow connection) before it can answer at all.
+  const result = await workerRpc("complete", payload, 20000);
   if (context.aborted || !result || !Array.isArray(result.completions)) return null;
   const dotIdx = Math.max(word.text.lastIndexOf("."), -1);
   const from = dotIdx >= 0 ? word.from + dotIdx + 1 : word.from;
@@ -1640,8 +1642,14 @@ async function runAllCells() {
 }
 function restartAndRunAll() {
   restartRuntime("— restarting runtime for Run All —");
+  let attempts = 0;
   const check = setInterval(() => {
-    if (runtimeReady) { clearInterval(check); runAllCells(); }
+    attempts++;
+    if (runtimeReady) { clearInterval(check); runAllCells(); return; }
+    if (attempts > 150) { // ~30s — matches the boot-timeout hint shown elsewhere
+      clearInterval(check);
+      appendTerm("sys fail", "— Run All cancelled: runtime didn't come back up. Check your network connection and try again. —");
+    }
   }, 200);
 }
 function addCell(afterId, type) {
@@ -1746,6 +1754,8 @@ function openReportWindow(html) {
   const url = URL.createObjectURL(blob);
   const win = window.open(url, "_blank");
   if (!win) alert("Your browser blocked the report popup — allow popups for this page and try again.");
+  // The new tab has its own copy once loaded; release ours after giving it time to load.
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 function exportTerminalReport() {
   saveActiveFileFromEditor();
@@ -2341,6 +2351,15 @@ function restartRuntime(reason) {
   debugging = false; debugTrace = []; debugIndex = -1;
   debugBar.classList.remove("on"); fileDot.classList.remove("debugging");
   view.dispatch({ effects: setDebugLine.of(null) });
+  // A terminated worker will never answer anything it was still handling —
+  // resolve those now so nothing (e.g. Run All, or an in-flight autocomplete) hangs forever.
+  Object.keys(cellRunResolvers).forEach((cellId) => {
+    setCellRunningUi(cellId, false);
+    cellRunResolvers[cellId]();
+    delete cellRunResolvers[cellId];
+  });
+  pendingRpc.forEach((cb) => cb(null));
+  pendingRpc.clear();
   updateRunButtons();
   setRuntimeStatus("busy", "Restarting runtime…");
   bootScreen.style.display = "flex"; bootScreen.classList.remove("hidden");
@@ -2792,22 +2811,23 @@ document.getElementById("settingsDone").onclick = () => settingsModal.classList.
 document.getElementById("setOpenPackages").onclick = openPackages;
 document.getElementById("setRestartRuntime").onclick = () => restartRuntime("— restarting runtime (from Settings) —");
 
-document.getElementById("setTheme").onchange = (e) => setTheme(e.target.value === "dark");
-document.getElementById("setFont").onchange = (e) => setFontFamily(e.target.value);
-document.getElementById("setFontSize").onchange = (e) => { fontSize = parseFloat(e.target.value) || 13.5; applyFontSize(); };
-document.getElementById("setTabSize").onchange = (e) => setTabSize(parseInt(e.target.value, 10));
-document.getElementById("setWordWrap").onchange = (e) => setWrap(e.target.checked);
-document.getElementById("setMinimap").onchange = (e) => setMinimap(e.target.checked);
-document.getElementById("setAutoSave").onchange = (e) => applyAutoSave(e.target.checked);
-document.getElementById("setTermFontSize").onchange = (e) => setTermFontSize(parseFloat(e.target.value) || 12.5);
-document.getElementById("setClearOnRun").onchange = (e) => { settings.clearOnRun = e.target.checked; };
-document.getElementById("setJediEnabled").onchange = (e) => { settings.jediEnabled = e.target.checked; };
+document.getElementById("setTheme").onchange = (e) => { setTheme(e.target.value === "dark"); savePrefs(); };
+document.getElementById("setFont").onchange = (e) => { setFontFamily(e.target.value); savePrefs(); };
+document.getElementById("setFontSize").onchange = (e) => { fontSize = parseFloat(e.target.value) || 13.5; applyFontSize(); savePrefs(); };
+document.getElementById("setTabSize").onchange = (e) => { setTabSize(parseInt(e.target.value, 10)); savePrefs(); };
+document.getElementById("setWordWrap").onchange = (e) => { setWrap(e.target.checked); savePrefs(); };
+document.getElementById("setMinimap").onchange = (e) => { setMinimap(e.target.checked); savePrefs(); };
+document.getElementById("setAutoSave").onchange = (e) => { applyAutoSave(e.target.checked); savePrefs(); };
+document.getElementById("setTermFontSize").onchange = (e) => { setTermFontSize(parseFloat(e.target.value) || 12.5); savePrefs(); };
+document.getElementById("setClearOnRun").onchange = (e) => { settings.clearOnRun = e.target.checked; savePrefs(); };
+document.getElementById("setJediEnabled").onchange = (e) => { settings.jediEnabled = e.target.checked; savePrefs(); };
 document.getElementById("setLintEnabled").onchange = (e) => {
   settings.lintEnabled = e.target.checked;
   if (!settings.lintEnabled) { lintDiagnostics = []; forceLinting(view); } else scheduleLint();
+  savePrefs();
 };
-document.getElementById("setFormatter").onchange = (e) => { settings.formatter = e.target.value; };
-document.getElementById("setFormatOnSave").onchange = (e) => { settings.formatOnSave = e.target.checked; };
+document.getElementById("setFormatter").onchange = (e) => { settings.formatter = e.target.value; savePrefs(); };
+document.getElementById("setFormatOnSave").onchange = (e) => { settings.formatOnSave = e.target.checked; savePrefs(); };
 
 document.getElementById("setFontSize").value = fontSize;
 document.getElementById("setTermFontSize").value = 12.5;
@@ -2815,7 +2835,48 @@ document.getElementById("setJediEnabled").checked = settings.jediEnabled;
 document.getElementById("setLintEnabled").checked = settings.lintEnabled;
 document.getElementById("setFormatter").value = settings.formatter;
 document.getElementById("setFormatOnSave").checked = settings.formatOnSave;
-applyAutoSave(true);
+
+/* Preferences persist across reloads (separate from the project save/autosave
+   system, which stores your files — this stores editor/runtime preferences). */
+const PREFS_KEY = "kvpy-prefs-v1";
+function currentPrefs() {
+  return {
+    theme: document.getElementById("setTheme").value,
+    font: document.getElementById("setFont").value,
+    fontSize: document.getElementById("setFontSize").value,
+    tabSize: document.getElementById("setTabSize").value,
+    wordWrap: document.getElementById("setWordWrap").checked,
+    minimap: document.getElementById("setMinimap").checked,
+    autoSave: document.getElementById("setAutoSave").checked,
+    termFontSize: document.getElementById("setTermFontSize").value,
+    clearOnRun: document.getElementById("setClearOnRun").checked,
+    jediEnabled: document.getElementById("setJediEnabled").checked,
+    lintEnabled: document.getElementById("setLintEnabled").checked,
+    formatter: document.getElementById("setFormatter").value,
+    formatOnSave: document.getElementById("setFormatOnSave").checked,
+  };
+}
+function savePrefs() {
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(currentPrefs())); } catch (e) {}
+}
+function loadPrefs() {
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem(PREFS_KEY) || "null"); } catch (e) {}
+  if (p && p.theme) setTheme(p.theme === "dark");
+  if (p && p.font) setFontFamily(p.font);
+  if (p && p.fontSize) { fontSize = parseFloat(p.fontSize) || fontSize; applyFontSize(); document.getElementById("setFontSize").value = fontSize; }
+  if (p && p.tabSize) setTabSize(parseInt(p.tabSize, 10));
+  setWrap(!!(p && p.wordWrap));
+  setMinimap(!!(p && p.minimap));
+  if (p && p.termFontSize) setTermFontSize(parseFloat(p.termFontSize) || 12.5);
+  if (p && typeof p.clearOnRun === "boolean") { settings.clearOnRun = p.clearOnRun; document.getElementById("setClearOnRun").checked = p.clearOnRun; }
+  if (p && typeof p.jediEnabled === "boolean") { settings.jediEnabled = p.jediEnabled; document.getElementById("setJediEnabled").checked = p.jediEnabled; }
+  if (p && typeof p.lintEnabled === "boolean") { settings.lintEnabled = p.lintEnabled; document.getElementById("setLintEnabled").checked = p.lintEnabled; }
+  if (p && p.formatter) { settings.formatter = p.formatter; document.getElementById("setFormatter").value = p.formatter; }
+  if (p && typeof p.formatOnSave === "boolean") { settings.formatOnSave = p.formatOnSave; document.getElementById("setFormatOnSave").checked = p.formatOnSave; }
+  applyAutoSave(p && typeof p.autoSave === "boolean" ? p.autoSave : true);
+}
+loadPrefs();
 
 /* =================================================================
    RESIZE HANDLE
