@@ -719,6 +719,7 @@ let cellViews = {};
 let notebookCellCounter = 0;
 let cellExecCounter = 0;
 const cellRunResolvers = {};
+let lintDebounceTimer = null; // declared early: openFile() below calls scheduleLint(), which uses this, synchronously on load
 const settings = { clearOnRun: false, jediEnabled: true, lintEnabled: true, formatter: "autopep8", formatOnSave: false }; // declared early: openFile() below can call scheduleLint() synchronously on load
 function bpSetFor(path) { if (!breakpoints[path]) breakpoints[path] = new Set(); return breakpoints[path]; }
 function toggleBreakpoint(lineNo) {
@@ -1785,7 +1786,6 @@ function exportReport() {
 /* =================================================================
    LINTING (pyflakes, runs in the background as you type)
 ================================================================= */
-let lintDebounceTimer = null;
 function scheduleLint() {
   clearTimeout(lintDebounceTimer);
   if (!settings.lintEnabled || !runtimeReady || !/\.py$/i.test(activeFilePath)) return;
